@@ -6,12 +6,18 @@ import net.sf.jsefa.csv.annotation.CsvField;
 @CsvDataType()
 public class Method {
 	String id="";
+	HistoryFile history=new HistoryFile();
+
+	//recordID
     @CsvField(pos = 1)
 	String path="";
-	HistoryFile history=new HistoryFile();
+
+    //dependent variable
     @CsvField(pos = 2)
     int isBuggy=0;
 
+    //independent variable
+    //code metrics
     @CsvField(pos = 3)
     int fanIN=0;
     @CsvField(pos = 4)
@@ -31,37 +37,64 @@ public class Method {
     @CsvField(pos = 11)
     int maxNesting=0;
 
-
+    //process metrics
     @CsvField(pos = 12)
     int methodHistories=0;
     @CsvField(pos = 13)
-    int authors=0;
+    int devTotal    = 0;
     @CsvField(pos = 14)
-    int stmtAdded=0;
+    int devMinor    = 0;
     @CsvField(pos = 15)
-    int maxStmtAdded=0;
+    int devMajor    = 0;
     @CsvField(pos = 16, converterType = DoubleConverter.class)
-    double avgStmtAdded=0;
+    double ownership   = 0;
     @CsvField(pos = 17)
-    int stmtDeleted=0;
-    @CsvField(pos = 18)
-    int maxStmtDeleted=0;
-    @CsvField(pos = 19, converterType = DoubleConverter.class)
-    double avgStmtDeleted=0;
-    @CsvField(pos = 20)
-    int churn=0;
-    @CsvField(pos = 21)
-    int maxChurn=0;
-    @CsvField(pos = 22, converterType = DoubleConverter.class)
-    double avgChurn=0;
-    @CsvField(pos = 23)
-    int decl=0;
-    @CsvField(pos = 24)
-    int cond=0;
-    @CsvField(pos = 25)
     int elseAdded=0;
-    @CsvField(pos = 26)
+    @CsvField(pos = 18)
     int elseDeleted=0;
+    @CsvField(pos = 19)
+    int fixChgNum = 0;
+    @CsvField(pos = 20)
+    int pastBugNum  = 0;
+    @CsvField(pos = 21)
+    int bugIntroNum = 0;
+    @CsvField(pos = 22)
+    int logCoupNum  = 0;
+    @CsvField(pos = 23)
+    int period      = 0;
+    @CsvField(pos = 24, converterType = DoubleConverter.class)
+    double avgInterval = 0;
+    @CsvField(pos = 25)
+    int maxInterval = 0;
+    @CsvField(pos = 26)
+    int minInterval = 0;
+    @CsvField(pos = 27)
+    int stmtAdded=0;
+    @CsvField(pos = 28)
+    int maxStmtAdded=0;
+    @CsvField(pos = 29, converterType = DoubleConverter.class)
+    double avgStmtAdded=0;
+    @CsvField(pos = 30)
+    int stmtDeleted=0;
+    @CsvField(pos = 31)
+    int maxStmtDeleted=0;
+    @CsvField(pos = 32, converterType = DoubleConverter.class)
+    double avgStmtDeleted=0;
+    @CsvField(pos = 33)
+    int churn=0;
+    @CsvField(pos = 34)
+    int maxChurn=0;
+    @CsvField(pos = 35, converterType = DoubleConverter.class)
+    double avgChurn=0;
+    @CsvField(pos = 36)
+    int decl=0;
+    @CsvField(pos = 37)
+    int cond=0;
+    //@CsvField(pos = 35, converterType = DoubleConverter.class)
+    //double hcm = 0;
+
+
+
 
 
     public Method() {

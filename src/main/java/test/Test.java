@@ -14,12 +14,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,29 +59,49 @@ public class Test {
 	private static String pathRevision2Date;
 	private static String pathRelease2Date;
 	private static String pathBugsAllfile;
+	private static String pathCommitIntro2Path;
+	private static String pathCommit2PathHasBeenBuggy;
+	private static String pathCommit2IsFix;
+
+
 	private static HashMap<String, History> historiesAllfile=new HashMap<String, History>();
 	private static HashMap<String, Method> dataset = new HashMap<String, Method>();
 	private static HashMap<String, HashMap<String,String[]>> bugAllfiles = new HashMap<String, HashMap<String,String[]>>();
+	private static HashMap<String, String[]> commitIntro2Path=null;
+	private static HashMap<String, String[]> commit2PathHasBeenBuggy=null;
+	private static HashMap<String, Integer> commit2IsFix=null;
 
 
 	public static void main(String[] args) {
-		release=1;
-		pathProject="C:\\Users\\ShoOgino\\data\\1_task\\20200421_094917\\workspace\\inferBugs\\datasets\\egit\\raw";
-        pathPlugins = "C:\\Users\\ShoOgino\\data\\1_apps\\pleiades\\eclipse\\plugins";
+		//release = Integer.parseInt(args[0]);
+		//pathProject= args[1];
+		release = 1;
+		pathProject="C:\\Users\\login\\data\\1_task\\20200421_094917\\projects\\inferBugs\\datasets\\egit\\raw";
+        pathPlugins = "C:\\Users\\login\\work\\pleiades\\eclipse\\plugins";
 
 		pathRepositoryFile = pathProject+"/file"+release;
 		pathDataset = pathProject+"/"+release+".csv";
 		pathRevision2Date = pathProject + "/revision2Date.json";
 		pathRelease2Date  = pathProject + "/release2Date.json";
 		pathBugsAllfile  = pathProject + "/bugintros.json";
+		pathCommitIntro2Path = pathProject + "/commitIntro2path.json";
+		pathCommit2PathHasBeenBuggy = pathProject + "/commit2PathHasBeenBuggy.json";
+		pathCommit2IsFix = pathProject + "/commitsFix.json";
 
 		String strRelease2Date=readAll(pathRelease2Date);
+		String strCommitIntro2Path=readAll(pathCommitIntro2Path);
+		String strCommit2PathAlreadyBuggy=readAll(pathCommit2PathHasBeenBuggy);
+		String strCommit2IsFix=readAll(pathCommit2IsFix);
 		ObjectMapper mapper = new ObjectMapper();
 		HashMap<String, Integer> release2Date=null;
+		/*
 		try {
 			loadFiles();
 			loadBug();
 			release2Date=mapper.readValue(strRelease2Date, new TypeReference<HashMap<String, Integer>>() {});
+			commitIntro2Path=mapper.readValue(strCommitIntro2Path, new TypeReference<HashMap<String, String[]>>() {});
+			commit2PathHasBeenBuggy=mapper.readValue(strCommit2PathAlreadyBuggy, new TypeReference<HashMap<String, String[]>>() {});
+			commit2IsFix =mapper.readValue(strCommit2IsFix, new TypeReference<HashMap<String, Integer>>() {});
 		} catch (JsonParseException e) {
 			e.printStackTrace();
 		} catch (JsonMappingException e) {
@@ -90,7 +109,8 @@ public class Test {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
+*/
+		dataset = new HashMap<String, Method>();
 		loadDataset();
 		getCodeMetrics(dataset);
 		getProcessMetrics(dataset);
@@ -181,6 +201,7 @@ public class Test {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		/*
 		LocalDateTime now = LocalDateTime.now();
 		DateTimeFormatter datetimeformatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 		String datetimeformated = datetimeformatter.format(now);
@@ -209,6 +230,7 @@ public class Test {
 			// TODO 自動生成された catch ブロック
 			e.printStackTrace();
 		}
+		*/
     }
 
 
@@ -279,9 +301,13 @@ public class Test {
 		History tmp=null;
 		List<Commit> commits=null;
 		for(String path: dataset.keySet()) {
+			Method method = dataset.get(path);
+			History history=historiesAllfile.get(path);
+			if(history==null)continue;
+
+
 			count++;
 			System.out.println(count+ "/" + dataset.keySet().size());
-			History history=historiesAllfile.get(path);
 			if(history==null)continue;
 			HashSet<Commit> nodes=new HashSet<Commit>();
 			HashMap<String, ArrayList<String>> edges= new HashMap<String, ArrayList<String>>();
@@ -328,6 +354,15 @@ public class Test {
 			}
 			*/
 
+			int periodFrom = Integer.MAX_VALUE;
+			for(Commit commit: nodes) {
+				if(commit.date<periodFrom) {
+					periodFrom=commit.date;
+				}
+			}
+			int periodTo = dateUntil;
+			method.period = (periodTo - periodFrom)/(60*60*24);
+
 			//コミットパスを考慮しない
 			for(Commit commit: nodes) {
 				if(dateFrom<commit.date
@@ -338,18 +373,23 @@ public class Test {
 				}
 			}
 
+
 			commits.sort((a,b)->a.date-b.date);
 
-			getA(dataset.get(path), commits);
+			getA(method, commits);
 		}
 	}
 
 
 	private static void getA(Method method, List<Commit> commits){
-		Set<String> authors = new HashSet<String>();
+		ArrayList<String> authors = new ArrayList<String>();
 
 		//try {
 			int methodHistories=0;
+			int pastBugNum=0;
+			int fixChgNum=0;
+			int bugIntroNum=0;
+			int logCoupNum=0;
 			ArrayList<Integer> stmtAddeds = new ArrayList<Integer>();
 			ArrayList<Integer> stmtDeleteds = new ArrayList<Integer>();
 			ArrayList<Integer> churns = new ArrayList<Integer>();
@@ -367,7 +407,6 @@ public class Test {
 
 			for(int i=0;i<commits.size();i++) {
 				if(0<i && StringUtils.equals(commits.get(i-1).sourceNew, commits.get(i).sourceNew))continue;
-
 				String strPre;
 				String strPost;
 				if(commits.get(i).sourceOld==null) {
@@ -419,25 +458,10 @@ public class Test {
 					sourceCurrent ="public class Test{"+commits.get(i).sourceNew+"}";
 				}
 
-				/*
-				File left = File.createTempFile("left", ".suffix");
-				FileWriter filewriter = new FileWriter(left);
-				filewriter.write(sourcePrev);
-				filewriter.close();
-
-				File right = File.createTempFile("right", ".suffix");
-				filewriter = new FileWriter(right);
-				filewriter.write(sourceCurrent);
-				filewriter.close();
-				*/
 				FileDistiller distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
 				try {
-				    //distiller.extractClassifiedSourceCodeChanges(left, right);
 				    distiller.extractClassifiedSourceCodeChanges(sourcePrev, sourceCurrent);
 				} catch(Exception e) {
-				    /* An exception most likely indicates a bug in ChangeDistiller. Please file a
-				       bug report at https://bitbucket.org/sealuzh/tools-changedistiller/issues and
-				       attach the full stack trace along with the two files that you tried to distill. */
 				    System.err.println("Warning: error while change distilling. " + e.getMessage());
 				}
 
@@ -473,6 +497,21 @@ public class Test {
 				    }
 					churn=stmtAdded-stmtDeleted;
 					methodHistories++;
+					if(commits.get(i).bugFix!=null)pastBugNum++;
+					if(commit2IsFix.get(commits.get(i).id)==1)fixChgNum++;
+					if(commitIntro2Path.get(commits.get(i).id)==null) {
+					}else if(2<=commitIntro2Path.get(commits.get(i).id).length) {
+						bugIntroNum++;
+					}else if(1==commitIntro2Path.get(commits.get(i).id).length && commitIntro2Path.get(commits.get(i).id)[0].equals(method.path)) {
+						bugIntroNum++;
+					}
+					if(commit2PathHasBeenBuggy.get(commits.get(i).id)==null) {
+					}else if(2<=commit2PathHasBeenBuggy.get(commits.get(i).id).length) {
+	    		        logCoupNum++;
+					}else if(1==commit2PathHasBeenBuggy.get(commits.get(i).id).length && commit2PathHasBeenBuggy.get(commits.get(i).id)[0].equals(method.path)) {
+	    				logCoupNum++;
+					}
+
 					authors.add(commits.get(i).author);
 					stmtAddeds.add(stmtAdded);
 					stmtDeleteds.add(stmtDeleted);
@@ -487,8 +526,9 @@ public class Test {
 				}
 			}
 			if(methodHistories==0)return;
+			Set<String> authorsSet = new HashSet<String>(authors);
 			method.methodHistories=methodHistories;
-			method.authors=authors.size();
+			method.devTotal=authorsSet.size();
 			method.stmtAdded=stmtAddeds.stream().mapToInt(e->e).sum();
 			method.maxStmtAdded=stmtAddeds.stream().mapToInt(e->e).max().getAsInt();
 			method.avgStmtAdded=method.stmtAdded/(float)methodHistories;
@@ -502,15 +542,53 @@ public class Test {
 			method.cond=conds.stream().mapToInt(e->e).sum();
 			method.elseAdded=elseAddeds.stream().mapToInt(e->e).sum();
 			method.elseDeleted=elseDeleteds.stream().mapToInt(e->e).sum();
+			method.pastBugNum=pastBugNum;
+			method.fixChgNum=fixChgNum;
+			method.bugIntroNum=bugIntroNum;
+			method.logCoupNum=logCoupNum;
+			method.avgInterval = method.period / (float)method.methodHistories;
+			if(2<=commits.size()) {
+			    int minInterval=Integer.MAX_VALUE;
+			    int maxInterval=Integer.MIN_VALUE;
+			        for(int i=0;i<commits.size()-1;i++) {
+				        int interval=commits.get(i+1).date-commits.get(i).date;
+				        if(maxInterval < interval) {
+					        maxInterval = interval;
+				        }
+				        if(interval < minInterval) {
+    				    	minInterval = interval;
+				        }
+			        }
+    			method.minInterval=minInterval/(60*60*24);
+			    method.maxInterval=maxInterval/(60*60*24);
+			}
+			method.devTotal=authorsSet.size();
+			for(Iterator<String> iterator = authorsSet.iterator(); iterator.hasNext(); ) {
+				String author=iterator.next();
+				float count=0;
+				for(int i=0;i<authors.size();i++) {
+					if(author.equals(authors.get(i))) {
+						count++;
+					}
+				}
+				float ratio=count/authors.size();
+				if(method.ownership<ratio) {
+					method.ownership=ratio;
+				}
+				if(0.20<ratio) {
+					method.devMajor++;
+				}else {
+					method.devMinor++;
+				}
+			}
 			method.isBuggy = 0;//commits.get(commits.size()-1).isBuggy? 1:0;
 			for(Commit commit: commits) {
-
-
+				/*
 				if(commit.bugFix!=null) {
 					method.isBuggy = 1;
 				}
+				*/
 
-/*
 				if(0 < commit.bugIntro.size()) {
 					String strRelease2Date=readAll(pathRelease2Date);
 					String strRevision2Date=readAll(pathRevision2Date);
@@ -529,17 +607,17 @@ public class Test {
 					}
 					int count=0;
 					int allFiles=dataset.size();
-					int dateRelease=release2Date.get(Integer.toString(idRelease));
+					int dateRelease=release2Date.get(Integer.toString(release));
 
 
 					for(String id: commit.bugIntro) {
-					    if(commit.date <release2Date.get(Integer.toString(idRelease))
-							    & release2Date.get(Integer.toString(idRelease))< revision2Date.get(id)) {
+					    if(commit.date <release2Date.get(Integer.toString(release))
+							    & release2Date.get(Integer.toString(release))< revision2Date.get(id)) {
 				            method.isBuggy = 1;
 					    }
 					}
 				}
-*/
+
 
 			}
 		    //System.out.println("tset");
