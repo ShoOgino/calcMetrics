@@ -24,7 +24,7 @@ import org.eclipse.jdt.core.dom.Type;
 public class Visitor extends ASTVisitor {
 	CompilationUnit file;
 	String path="";
-	ArrayList<Method> methods=new ArrayList<Method>();
+	ArrayList<Record> records=new ArrayList<Record>();
 	ArrayList<String> methodsCalled= new ArrayList<String>();
     ArrayList<String> source = new ArrayList<String>();
 
@@ -117,22 +117,21 @@ public class Visitor extends ASTVisitor {
 			return false;
 		}
 
-		Method method = new Method();
-		method.id=calculateIDMethod(node);
-		method.path = calculatePathMethod(node);
-		System.out.println(method.path);
+		Record record = new Record();
+		record.path = calculatePathMethod(node);
+		System.out.println(record.path);
 
 		VisitorFanout visitorFanout = new VisitorFanout();
 		node.accept(visitorFanout);
-		method.fanOut = visitorFanout.fanout;
+		record.fanOut = visitorFanout.fanout;
 
-		method.parameters = node.parameters().size();
+		record.parameters = node.parameters().size();
 
 		VisitorLocalVar visitorLocalVar = new VisitorLocalVar();
 		node.accept(visitorLocalVar);
-		method.localVar = visitorLocalVar.NOVariables;
+		record.localVar = visitorLocalVar.NOVariables;
 
-		method.commentRatio = calculateCommentRatio(node.getBody());
+		record.commentRatio = calculateCommentRatio(node.getBody());
 
 		VisitorCountPath visitorCountPath =new VisitorCountPath();
 		node.accept(visitorCountPath);
@@ -140,25 +139,25 @@ public class Visitor extends ASTVisitor {
 		for(int branch: visitorCountPath.branches) {
 			path*=branch;
 		}
-		method.countPath=path;
+		record.countPath=path;
 
 		VisitorComplexity visitorComplexity =new VisitorComplexity();
 		node.accept(visitorComplexity);
-		method.complexity=visitorComplexity.complexity;
+		record.complexity=visitorComplexity.complexity;
 
 		VisitorExecStmt visitorStatement =new VisitorExecStmt();
 		if(node.getBody().statements().size()>0) {
 			((ASTNode) node.getBody().statements().get(0)).accept(visitorStatement);
-			method.execStmt=visitorStatement.execStmt;
+			record.execStmt=visitorStatement.execStmt;
 		}else {
-			method.execStmt=0;
+			record.execStmt=0;
 		}
 
 		VisitorMaxNesting visitorMaxNesting =new VisitorMaxNesting();
 		node.accept(visitorMaxNesting);
-		method.maxNesting=visitorMaxNesting.maxNesting;
+		record.maxNesting=visitorMaxNesting.maxNesting;
 
-		methods.add(method);
+		records.add(record);
 		return super.visit(node);
 	}
 
@@ -283,7 +282,7 @@ public class Visitor extends ASTVisitor {
 
 
 		File file = new File(path);
-		String regex = "(?<=file\\d\\\\).+|(?<=file\\d\\d\\\\).+";
+		String regex = "(?<=repositoryFile\\\\).+";
 		Pattern p = Pattern.compile(regex);
 		Matcher m = p.matcher(file.getParent());
 		m.find();

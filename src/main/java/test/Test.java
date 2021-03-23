@@ -1,13 +1,10 @@
 package test;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -17,91 +14,114 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.CheckoutConflictException;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.InvalidRefNameException;
+import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
+import org.eclipse.jgit.api.errors.RefNotFoundException;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import ch.uzh.ifi.seal.changedistiller.ChangeDistiller;
-import ch.uzh.ifi.seal.changedistiller.ChangeDistiller.Language;
-import ch.uzh.ifi.seal.changedistiller.distilling.FileDistiller;
-import ch.uzh.ifi.seal.changedistiller.model.classifiers.ChangeType;
-import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
-import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
-import net.sf.jsefa.Deserializer;
+import me.tongfei.progressbar.ProgressBar;
 import net.sf.jsefa.Serializer;
 import net.sf.jsefa.csv.CsvIOFactory;
 import net.sf.jsefa.csv.config.CsvConfiguration;
 
 public class Test {
-	private static int release;
-	private static String pathProject;
-	private static String pathPlugins;
+	private static String pathPlugins  = "C:/Users/login/work/pleiades/eclipse/plugins";
+	private static String pathProject  = "C:/Users/login/data/1_task/20200421_094917/projects/inferBugs/datasets/egit/raw";
+	private static String idCommitMethodFrom = "e47f0c1c1390a956f5f8b19e62bb933c614492fc";
+	private static String idCommitMethodTo   = "f020b5381b96f3a2dde3d748cd43283d0968acf5";
+	private static String idCommitFileFrom   = "dfbdc456d8645fc0c310b5e15cf8d25d8ff7f84b";
+	private static String idCommitFileTo     = "0cc8d32aff8ce91f71d2cdac8f3e362aff747ae7";
 
+	private static String pathRepositoryFile = pathProject+"/repositoryFile";
+	private static String pathRepositoryMethod = pathProject+"/repositoryMethod";
+	private static String pathDataset = pathProject+"/datasets/"+idCommitMethodFrom.substring(0,8)+"_"+idCommitMethodTo.substring(0,8)+".csv";
+	private static String pathSourceFiles = pathProject+"/sourceFiles.json";
+	private static String pathCommits = pathProject+"/commits";
+	private static String pathBugs = pathProject+"/bugs.json";
 
-	private static String pathRepositoryFile;
-	private static String pathDataset;
-	private static String pathRevision2Date;
-	private static String pathRelease2Date;
-	private static String pathBugsAllfile;
-	private static String pathCommitIntro2Path;
-	private static String pathCommit2PathHasBeenBuggy;
-	private static String pathCommit2IsFix;
+	private static HashMap<String, Record> records = new HashMap<String, Record>();
+	private static HashMap<String, Commit> commits = new HashMap<>();
+	private static HashMap<String, SourceFile> sourceFiles = new HashMap<>();
+	private static HashMap<String, HashMap<String,String[]>> bugs = new HashMap<String, HashMap<String,String[]>>();
 
+	public static void main(String[] args) throws RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, IOException, GitAPIException {
+		loadFiles();
+		setRepository();
+		setEmptyRecords();
+		getCodeMetrics();
+		//getProcessMetrics();
+    	saveDataset();
+	}
 
-	private static HashMap<String, History> historiesAllfile=new HashMap<String, History>();
-	private static HashMap<String, Method> dataset = new HashMap<String, Method>();
-	private static HashMap<String, HashMap<String,String[]>> bugAllfiles = new HashMap<String, HashMap<String,String[]>>();
-	private static HashMap<String, String[]> commitIntro2Path=null;
-	private static HashMap<String, String[]> commit2PathHasBeenBuggy=null;
-	private static HashMap<String, Integer> commit2IsFix=null;
+	private static void getHasBeenIntroduced() {
+	}
 
+	private static void getHasBeenFixed() {
+	}
 
-	public static void main(String[] args) {
-		//release = Integer.parseInt(args[0]);
-		//pathProject= args[1];
-		release = 1;
-		pathProject="C:\\Users\\login\\data\\1_task\\20200421_094917\\projects\\inferBugs\\datasets\\egit\\raw";
-        pathPlugins = "C:\\Users\\login\\work\\pleiades\\eclipse\\plugins";
+	private static void getIsBuggy(String path, String idCommit) {	}
 
-		pathRepositoryFile = pathProject+"/file"+release;
-		pathDataset = pathProject+"/"+release+".csv";
-		pathRevision2Date = pathProject + "/revision2Date.json";
-		pathRelease2Date  = pathProject + "/release2Date.json";
-		pathBugsAllfile  = pathProject + "/bugintros.json";
-		pathCommitIntro2Path = pathProject + "/commitIntro2path.json";
-		pathCommit2PathHasBeenBuggy = pathProject + "/commit2PathHasBeenBuggy.json";
-		pathCommit2IsFix = pathProject + "/commitsFix.json";
+	private static void setRepository() throws IOException, RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, GitAPIException {
+		//repositoryFileについて、そのidCommitへcheckout。
+        Git git = Git.open(new File(pathRepositoryFile));
+        git.checkout().setName(idCommitFileTo).call();
+	}
 
-		String strRelease2Date=readAll(pathRelease2Date);
-		String strCommitIntro2Path=readAll(pathCommitIntro2Path);
-		String strCommit2PathAlreadyBuggy=readAll(pathCommit2PathHasBeenBuggy);
-		String strCommit2IsFix=readAll(pathCommit2IsFix);
-		ObjectMapper mapper = new ObjectMapper();
-		HashMap<String, Integer> release2Date=null;
-		/*
+	private static void setEmptyRecords() {
+		Path rootDir = Paths.get(pathRepositoryFile);
 		try {
-			loadFiles();
-			loadBug();
-			release2Date=mapper.readValue(strRelease2Date, new TypeReference<HashMap<String, Integer>>() {});
-			commitIntro2Path=mapper.readValue(strCommitIntro2Path, new TypeReference<HashMap<String, String[]>>() {});
-			commit2PathHasBeenBuggy=mapper.readValue(strCommit2PathAlreadyBuggy, new TypeReference<HashMap<String, String[]>>() {});
-			commit2IsFix =mapper.readValue(strCommit2IsFix, new TypeReference<HashMap<String, Integer>>() {});
+			List<String> paths =Files.walk(rootDir)
+					.map(Path::toString)
+					.filter(p -> p.endsWith(".java"))
+					.filter(p -> !p.contains("test"))
+					.collect(Collectors.toList());
+			for(String path: paths) {
+				records.put(path, new Record());
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void loadFiles() {
+		//commits
+		File fileCommits = new File(pathCommits);
+		List<File> filesCommit = Arrays.asList(fileCommits.listFiles());
+		for(File file: ProgressBar.wrap(filesCommit, "loadFiles")) {
+			String path =file.toString();
+			try {
+				String strCommit=readAll(path);
+				ObjectMapper mapper = new ObjectMapper();
+				Commit commit = mapper.readValue(strCommit, new TypeReference<Commit>() {});
+				commits.put(commit.id,commit);
+			} catch (JsonParseException e) {
+				e.printStackTrace();
+			} catch (JsonMappingException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		//sourceFiles
+		try {
+			String strSourceFile=readAll(pathSourceFiles);
+			ObjectMapper mapper = new ObjectMapper();
+			sourceFiles = mapper.readValue(strSourceFile, new TypeReference<HashMap<String, SourceFile>>() {});
 		} catch (JsonParseException e) {
 			e.printStackTrace();
 		} catch (JsonMappingException e) {
@@ -109,76 +129,21 @@ public class Test {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-*/
-		dataset = new HashMap<String, Method>();
-		loadDataset();
-		getCodeMetrics(dataset);
-		getProcessMetrics(dataset);
-    	storeDataset();
-	}
-
-	private static void loadFiles() {
-		File dir = new File(pathProject+"/testBugfixes");
-		File[] list = dir.listFiles();
-		int count=0;
-		int NOFiles=list.length;
-		for(File file: list) {
-			System.out.println(count + "/" + NOFiles);
-			String path =file.toString();
-			System.out.println(path);
-			try {
-				String strFile=readAll(path);
-				ObjectMapper mapper = new ObjectMapper();
-				History history = mapper.readValue(strFile, new TypeReference<History>() {});
-				historiesAllfile.put( history.path, history );
-				count++;
-			} catch (JsonParseException e) {
-				e.printStackTrace();
-			} catch (JsonMappingException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private static void loadBug() {
+		//bugs
 		try {
-			String strInfoBug = readAll(pathBugsAllfile);
+			String strBugs=readAll(pathBugs);
 			ObjectMapper mapper = new ObjectMapper();
-			bugAllfiles = mapper.readValue(strInfoBug, new TypeReference<HashMap<String, HashMap<String,String[]>>>() {});
+			bugs = mapper.readValue(strBugs, new TypeReference<HashMap<String, HashMap<String, String[]>>>() {});
+		} catch (JsonParseException e) {
+			e.printStackTrace();
+		} catch (JsonMappingException e) {
+			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
-    private static void loadDataset() {
-		File file=new File(pathDataset);
-		if (file.exists()) {
-			try (FileInputStream fis = new FileInputStream(pathDataset);
-					InputStreamReader isr = new InputStreamReader(fis, StandardCharsets.UTF_8);
-					BufferedReader reader = new BufferedReader(isr)){
-				CsvConfiguration config = new CsvConfiguration();
-				config.setFieldDelimiter(',');
-				config.getSimpleTypeConverterProvider().registerConverterType(double.class, DoubleConverter.class);
-				Deserializer deserializer = CsvIOFactory.createFactory(config, Method.class).createDeserializer();
-				deserializer.open(reader);
-				while (deserializer.hasNext()) {
-					Method m = deserializer.next();
-				    dataset.put(m.path, m);
-				}
-				deserializer.close(true);
-			} catch (JsonParseException e) {
-				e.printStackTrace();
-			} catch (JsonMappingException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-    }
-
-    private static void storeDataset() {
+    private static void saveDataset() {
 		try {
 			FileOutputStream fos= new FileOutputStream(pathDataset);
 			OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
@@ -187,12 +152,12 @@ public class Test {
 			config.setFieldDelimiter(',');
 			config.getSimpleTypeConverterProvider().registerConverterType(double.class, DoubleConverter.class);
 			File csv = new File(pathDataset);
-		    Serializer serializer = CsvIOFactory.createFactory(config, Method.class).createSerializer();
+		    Serializer serializer = CsvIOFactory.createFactory(config, Record.class).createSerializer();
 
 			serializer.open(writer);
-			for(String key: dataset.keySet()) {
-				Method method=dataset.get(key);
-				serializer.write(method);
+			for(String key: records.keySet()) {
+				Record record=records.get(key);
+				serializer.write(record);
 			}
 			serializer.close(true);
 			writer.close();
@@ -201,47 +166,13 @@ public class Test {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		/*
-		LocalDateTime now = LocalDateTime.now();
-		DateTimeFormatter datetimeformatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-		String datetimeformated = datetimeformatter.format(now);
-
-		try {
-			FileOutputStream fos= new FileOutputStream(pathDataset+datetimeformated);
-			OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
-			BufferedWriter writer = new BufferedWriter(osw);
-			CsvConfiguration config = new CsvConfiguration();
-			config.setFieldDelimiter(',');
-			config.getSimpleTypeConverterProvider().registerConverterType(double.class, DoubleConverter.class);
-			File csv = new File(pathDataset);
-		    Serializer serializer = CsvIOFactory.createFactory(config, Method.class).createSerializer();
-
-			serializer.open(writer);
-			for(String key: dataset.keySet()) {
-				Method method=dataset.get(key);
-				serializer.write(method);
-			}
-			serializer.close(true);
-			writer.close();
-		} catch (FileNotFoundException e) {
-			// TODO 自動生成された catch ブロック
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO 自動生成された catch ブロック
-			e.printStackTrace();
-		}
-		*/
     }
 
-
-	private static void getCodeMetrics(HashMap<String, Method> dataset) {
+	private static void getCodeMetrics() {
 		final String[] sourcePathDirs = {};
 		final String[] libs = getLibraries(pathRepositoryFile);
-		final String[] sources = getSources(pathRepositoryFile);
-		//for(int i=0;i<sources.length;i++)
-		//System.out.println(sources[i]);
-
-		ArrayList<Method> methods;
+		String[] sources = new String[records.size()];
+		records.keySet().toArray(sources);
 
 		ASTParser parser = ASTParser.newParser(AST.JLS3);
 		final Map<String,String> options = JavaCore.getOptions();
@@ -256,58 +187,30 @@ public class Test {
 		parser.setStatementsRecovery(true);
 		parser.setEnvironment(libs, sourcePathDirs, null, true);
 
-
 		String[] keys = new String[] {""};
 		Requestor requestor = new Requestor();
 		parser.createASTs(sources, null, keys, requestor, new NullProgressMonitor());
-		methods=requestor.methods;
+		records=requestor.records;
 
-
-		for(String id: requestor.methodsCalled) {
-			for(Method test: methods) {
-				if(test.id.equals(id)) {
-					test.fanIN++;
+		for(String pathCalled: requestor.methodsCalled) {
+			for(String path: records.keySet()) {
+				if(path.equals(pathCalled)) {
+					records.get(path).fanIN++;
 				}
 			}
 		}
-		for(Method method: methods) {
-			dataset.put(method.path, method);
-		}
 	}
-
-	private static void getProcessMetrics(HashMap<String, Method> dataset) {
-		//String strHistory=readAll(pathHistoriesAllfile);
-		String strRelease2Date=readAll(pathRelease2Date);
-		ObjectMapper mapper = new ObjectMapper();
-		HashMap<String, Integer> release2Date=null;
-		try {
-			//historiesAllfile = mapper.readValue(strHistory, new TypeReference<HashMap<String, History>>() {});
-			release2Date=mapper.readValue(strRelease2Date, new TypeReference<HashMap<String, Integer>>() {});
-		} catch (JsonParseException e) {
-			e.printStackTrace();
-		} catch (JsonMappingException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-
-		int count=0;
-		int allFiles=dataset.size();
-		int dateFrom=release2Date.get(Integer.toString(release-1));
-		int dateUntil=release2Date.get(Integer.toString(release));
-
+/*
+	private static void getProcessMetrics() {
+		getIsBuggy();
+		getHasBeenFixed();
+		getHasBeenIntroduced();
 
 		History tmp=null;
 		List<Commit> commits=null;
-		for(String path: dataset.keySet()) {
-			Method method = dataset.get(path);
-			History history=historiesAllfile.get(path);
-			if(history==null)continue;
-
-
-			count++;
-			System.out.println(count+ "/" + dataset.keySet().size());
+		for(String path: records.keySet()) {
+			Record record = records.get(path);
+			System.out.println(count+ "/" + records.keySet().size());
 			if(history==null)continue;
 			HashSet<Commit> nodes=new HashSet<Commit>();
 			HashMap<String, ArrayList<String>> edges= new HashMap<String, ArrayList<String>>();
@@ -342,17 +245,7 @@ public class Test {
 			}
 
 			commits=new ArrayList<Commit>();
-			//コミットパスを考慮
-			/*
-			for(Commit commit: nodes) {
-				if(history.pathCommit.contains(commit.id)
-						& dateFrom<commit.date
-						& commit.date<dateUntil
-						) {
-					commits.add(commit);
-				}
-			}
-			*/
+
 
 			int periodFrom = Integer.MAX_VALUE;
 			for(Commit commit: nodes) {
@@ -361,7 +254,7 @@ public class Test {
 				}
 			}
 			int periodTo = dateUntil;
-			method.period = (periodTo - periodFrom)/(60*60*24);
+			record.period = (periodTo - periodFrom)/(60*60*24);
 
 			//コミットパスを考慮しない
 			for(Commit commit: nodes) {
@@ -376,12 +269,13 @@ public class Test {
 
 			commits.sort((a,b)->a.date-b.date);
 
-			getA(method, commits);
+			getA();
 		}
 	}
 
 
-	private static void getA(Method method, List<Commit> commits){
+	private static void getA(){
+		Record record = new Record();
 		ArrayList<String> authors = new ArrayList<String>();
 
 		//try {
@@ -498,19 +392,6 @@ public class Test {
 					churn=stmtAdded-stmtDeleted;
 					methodHistories++;
 					if(commits.get(i).bugFix!=null)pastBugNum++;
-					if(commit2IsFix.get(commits.get(i).id)==1)fixChgNum++;
-					if(commitIntro2Path.get(commits.get(i).id)==null) {
-					}else if(2<=commitIntro2Path.get(commits.get(i).id).length) {
-						bugIntroNum++;
-					}else if(1==commitIntro2Path.get(commits.get(i).id).length && commitIntro2Path.get(commits.get(i).id)[0].equals(method.path)) {
-						bugIntroNum++;
-					}
-					if(commit2PathHasBeenBuggy.get(commits.get(i).id)==null) {
-					}else if(2<=commit2PathHasBeenBuggy.get(commits.get(i).id).length) {
-	    		        logCoupNum++;
-					}else if(1==commit2PathHasBeenBuggy.get(commits.get(i).id).length && commit2PathHasBeenBuggy.get(commits.get(i).id)[0].equals(method.path)) {
-	    				logCoupNum++;
-					}
 
 					authors.add(commits.get(i).author);
 					stmtAddeds.add(stmtAdded);
@@ -527,26 +408,26 @@ public class Test {
 			}
 			if(methodHistories==0)return;
 			Set<String> authorsSet = new HashSet<String>(authors);
-			method.methodHistories=methodHistories;
-			method.devTotal=authorsSet.size();
-			method.stmtAdded=stmtAddeds.stream().mapToInt(e->e).sum();
-			method.maxStmtAdded=stmtAddeds.stream().mapToInt(e->e).max().getAsInt();
-			method.avgStmtAdded=method.stmtAdded/(float)methodHistories;
-			method.stmtDeleted=stmtDeleteds.stream().mapToInt(e->e).sum();
-			method.maxStmtDeleted=stmtDeleteds.stream().mapToInt(e->e).max().getAsInt();
-			method.avgStmtDeleted=method.stmtDeleted/(float)methodHistories;
-			method.churn=churns.stream().mapToInt(e->e).sum();
-			method.maxChurn=churns.stream().mapToInt(e->e).max().getAsInt();
-			method.avgChurn=method.churn/(float)methodHistories;
-			method.decl=decls.stream().mapToInt(e->e).sum();
-			method.cond=conds.stream().mapToInt(e->e).sum();
-			method.elseAdded=elseAddeds.stream().mapToInt(e->e).sum();
-			method.elseDeleted=elseDeleteds.stream().mapToInt(e->e).sum();
-			method.pastBugNum=pastBugNum;
-			method.fixChgNum=fixChgNum;
-			method.bugIntroNum=bugIntroNum;
-			method.logCoupNum=logCoupNum;
-			method.avgInterval = method.period / (float)method.methodHistories;
+			record.methodHistories=methodHistories;
+			record.devTotal=authorsSet.size();
+			record.stmtAdded=stmtAddeds.stream().mapToInt(e->e).sum();
+			record.maxStmtAdded=stmtAddeds.stream().mapToInt(e->e).max().getAsInt();
+			record.avgStmtAdded=record.stmtAdded/(float)methodHistories;
+			record.stmtDeleted=stmtDeleteds.stream().mapToInt(e->e).sum();
+			record.maxStmtDeleted=stmtDeleteds.stream().mapToInt(e->e).max().getAsInt();
+			record.avgStmtDeleted=record.stmtDeleted/(float)methodHistories;
+			record.churn=churns.stream().mapToInt(e->e).sum();
+			record.maxChurn=churns.stream().mapToInt(e->e).max().getAsInt();
+			record.avgChurn=record.churn/(float)methodHistories;
+			record.decl=decls.stream().mapToInt(e->e).sum();
+			record.cond=conds.stream().mapToInt(e->e).sum();
+			record.elseAdded=elseAddeds.stream().mapToInt(e->e).sum();
+			record.elseDeleted=elseDeleteds.stream().mapToInt(e->e).sum();
+			record.pastBugNum=pastBugNum;
+			record.fixChgNum=fixChgNum;
+			record.bugIntroNum=bugIntroNum;
+			record.logCoupNum=logCoupNum;
+			record.avgInterval = record.period / (float)record.methodHistories;
 			if(2<=commits.size()) {
 			    int minInterval=Integer.MAX_VALUE;
 			    int maxInterval=Integer.MIN_VALUE;
@@ -559,10 +440,10 @@ public class Test {
     				    	minInterval = interval;
 				        }
 			        }
-    			method.minInterval=minInterval/(60*60*24);
-			    method.maxInterval=maxInterval/(60*60*24);
+    			record.minInterval=minInterval/(60*60*24);
+			    record.maxInterval=maxInterval/(60*60*24);
 			}
-			method.devTotal=authorsSet.size();
+			record.devTotal=authorsSet.size();
 			for(Iterator<String> iterator = authorsSet.iterator(); iterator.hasNext(); ) {
 				String author=iterator.next();
 				float count=0;
@@ -572,23 +453,23 @@ public class Test {
 					}
 				}
 				float ratio=count/authors.size();
-				if(method.ownership<ratio) {
-					method.ownership=ratio;
+				if(record.ownership<ratio) {
+					record.ownership=ratio;
 				}
 				if(0.20<ratio) {
-					method.devMajor++;
+					record.devMajor++;
 				}else {
-					method.devMinor++;
+					record.devMinor++;
 				}
 			}
-			method.isBuggy = 0;//commits.get(commits.size()-1).isBuggy? 1:0;
+			record.isBuggy = 0;//commits.get(commits.size()-1).isBuggy? 1:0;
 			for(Commit commit: commits) {
 				/*
 				if(commit.bugFix!=null) {
 					method.isBuggy = 1;
 				}
 				*/
-
+/*
 				if(0 < commit.bugIntro.size()) {
 					String strRelease2Date=readAll(pathRelease2Date);
 					String strRevision2Date=readAll(pathRevision2Date);
@@ -606,26 +487,22 @@ public class Test {
 						e.printStackTrace();
 					}
 					int count=0;
-					int allFiles=dataset.size();
+					int allFiles=records.size();
 					int dateRelease=release2Date.get(Integer.toString(release));
 
 
 					for(String id: commit.bugIntro) {
 					    if(commit.date <release2Date.get(Integer.toString(release))
 							    & release2Date.get(Integer.toString(release))< revision2Date.get(id)) {
-				            method.isBuggy = 1;
+				            record.isBuggy = 1;
 					    }
 					}
 				}
 
 
 			}
-		    //System.out.println("tset");
-		//} catch (IOException e) {
-		//	e.printStackTrace();
-		//}
 	}
-
+*/
 
 	private static String[] getLibraries(String pathFile) {
 		Path[] dirs = new Path[]{
@@ -644,23 +521,6 @@ public class Test {
 			e.printStackTrace();
 		}
 		return classes.toArray(new String[classes.size()]);
-	}
-
-
-	private static String[] getSources(String pathFile) {
-		Path rootDir = Paths.get(pathFile);
-		String[] sources = null;
-		try {
-			List<String> test =Files.walk(rootDir)
-					.map(Path::toString)
-					.filter(p -> p.endsWith(".java"))
-					.filter(p -> !p.contains("test"))
-					.collect(Collectors.toList());
-			sources=test.toArray(new String[test.size()]);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return sources;
 	}
 
 

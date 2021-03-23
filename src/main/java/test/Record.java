@@ -4,10 +4,7 @@ import net.sf.jsefa.csv.annotation.CsvDataType;
 import net.sf.jsefa.csv.annotation.CsvField;
 
 @CsvDataType()
-public class Method {
-	String id="";
-	HistoryFile history=new HistoryFile();
-
+public class Record {
 	//recordID
     @CsvField(pos = 1)
 	String path="";
@@ -92,18 +89,4 @@ public class Method {
     int cond=0;
     //@CsvField(pos = 35, converterType = DoubleConverter.class)
     //double hcm = 0;
-
-
-
-
-
-    public Method() {
-    }
-    public Method(String path) {
-    	this.path=path;
-    }
-    public Method(String id, String path) {
-    	this.id=id;
-    	this.path=path;
-    }
 }
