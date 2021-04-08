@@ -46,9 +46,11 @@ public class Visitor extends ASTVisitor {
         private final MethodDeclaration node;
         private final StringBuilder buffer = new StringBuilder();
 
+
         public MethodNameGenerator(final MethodDeclaration node) {
             this.node = node;
         }
+
 
         public String generate() {
             generateTypeParameters();
@@ -59,7 +61,6 @@ public class Visitor extends ASTVisitor {
         }
 
         protected void generateTypeParameters() {
-            @SuppressWarnings("unchecked")
             final List<Object> types = node.typeParameters();
             if (types != null && !types.isEmpty()) {
                 final String typenames = types.stream()
@@ -81,7 +82,6 @@ public class Visitor extends ASTVisitor {
         }
 
         protected void generateParameters() {
-            @SuppressWarnings("unchecked")
             final List<Object> params = node.parameters();
             final String names = params.stream()
                     .map(o -> getTypeName((SingleVariableDeclaration) o))
@@ -118,6 +118,9 @@ public class Visitor extends ASTVisitor {
 		}
 
 		Record record = new Record();
+
+		record.id=calculateIDMethod(node);
+
 		record.path = calculatePathMethod(node);
 		System.out.println(record.path);
 
@@ -165,7 +168,6 @@ public class Visitor extends ASTVisitor {
 	public boolean visit(MethodInvocation node) {
 		String id=calculateIDMethod(node);
 		methodsCalled.add(id);
-
 		return super.visit(node);
 	}
 
@@ -275,11 +277,8 @@ public class Visitor extends ASTVisitor {
 		return namePackage + nameClass + "/" + nameMethod + "(" + nameArgment + ")";
 	}
 
-
 	public String calculatePathMethod(MethodDeclaration node) {
-
 		String pathMethod="";
-
 
 		File file = new File(path);
 		String regex = "(?<=repositoryFile\\\\).+";
@@ -289,7 +288,6 @@ public class Visitor extends ASTVisitor {
 		String dirFile=m.group();
 
 		String nameFile=file.getName().split(".java")[0];
-
 
 		String classMethod="";
 		ArrayList<String> listClass=new ArrayList<String>();
@@ -318,4 +316,5 @@ public class Visitor extends ASTVisitor {
 		pathMethod=pathMethod.replaceAll("\\\\", "/");
         return pathMethod;
     }
+
 }

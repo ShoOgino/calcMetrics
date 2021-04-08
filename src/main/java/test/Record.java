@@ -6,6 +6,7 @@ import net.sf.jsefa.csv.annotation.CsvField;
 @CsvDataType()
 public class Record {
 	//recordID
+	String id="";
     @CsvField(pos = 1)
 	String path="";
 
@@ -36,7 +37,7 @@ public class Record {
 
     //process metrics
     @CsvField(pos = 12)
-    int methodHistories=0;
+    int moduleHistories=0;
     @CsvField(pos = 13)
     int devTotal    = 0;
     @CsvField(pos = 14)

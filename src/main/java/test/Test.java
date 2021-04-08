@@ -14,8 +14,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -34,67 +36,102 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import ch.uzh.ifi.seal.changedistiller.ChangeDistiller;
+import ch.uzh.ifi.seal.changedistiller.ChangeDistiller.Language;
+import ch.uzh.ifi.seal.changedistiller.distilling.FileDistiller;
+import ch.uzh.ifi.seal.changedistiller.model.classifiers.ChangeType;
+import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
+import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 import me.tongfei.progressbar.ProgressBar;
 import net.sf.jsefa.Serializer;
 import net.sf.jsefa.csv.CsvIOFactory;
 import net.sf.jsefa.csv.config.CsvConfiguration;
 
 public class Test {
-	private static String pathPlugins  = "C:/Users/login/work/pleiades/eclipse/plugins";
-	private static String pathProject  = "C:/Users/login/data/1_task/20200421_094917/projects/inferBugs/datasets/egit/raw";
-	private static String idCommitMethodFrom = "e47f0c1c1390a956f5f8b19e62bb933c614492fc";
-	private static String idCommitMethodTo   = "f020b5381b96f3a2dde3d748cd43283d0968acf5";
-	private static String idCommitFileFrom   = "dfbdc456d8645fc0c310b5e15cf8d25d8ff7f84b";
-	private static String idCommitFileTo     = "0cc8d32aff8ce91f71d2cdac8f3e362aff747ae7";
+	private static String   pathProject           = "C:\\Users\\login\\data\\1_task\\20200421_094917\\projects\\MLTool\\datasets\\egit\\raw";
+	private static String   pathRepositoryFile = pathProject+"\\repositoryFile";
+	private static String   pathRepositoryMethod = pathProject+"\\repositoryMethod";
+	private static String[] pathDirsLibrary = {pathRepositoryFile};
+	private static String[] intervalCommitMethod = {"e47f0c1c1390a956f5f8b19e62bb933c614492fc", "f020b5381b96f3a2dde3d748cd43283d0968acf5"};
+	private static String[] intervalCommitFile   = {"dfbdc456d8645fc0c310b5e15cf8d25d8ff7f84b","0cc8d32aff8ce91f71d2cdac8f3e362aff747ae7"};
 
-	private static String pathRepositoryFile = pathProject+"/repositoryFile";
-	private static String pathRepositoryMethod = pathProject+"/repositoryMethod";
-	private static String pathDataset = pathProject+"/datasets/"+idCommitMethodFrom.substring(0,8)+"_"+idCommitMethodTo.substring(0,8)+".csv";
+	private static String pathDataset = pathProject+"/datasets/"+intervalCommitMethod[0].substring(0,8)+"_"+intervalCommitMethod[1].substring(0,8)+".csv";
 	private static String pathSourceFiles = pathProject+"/sourceFiles.json";
 	private static String pathCommits = pathProject+"/commits";
 	private static String pathBugs = pathProject+"/bugs.json";
 
-	private static HashMap<String, Record> records = new HashMap<String, Record>();
-	private static HashMap<String, Commit> commits = new HashMap<>();
-	private static HashMap<String, SourceFile> sourceFiles = new HashMap<>();
+	private static HashMap<String, Record> recordsAll = new HashMap<String, Record>();
+	private static HashMap<String, Commit> commitsAll = new HashMap<>();
+	private static HashMap<String, Module> modulesAll = new HashMap<>();
 	private static HashMap<String, HashMap<String,String[]>> bugs = new HashMap<String, HashMap<String,String[]>>();
 
-	public static void main(String[] args) throws RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, IOException, GitAPIException {
-		loadFiles();
-		setRepository();
-		setEmptyRecords();
-		getCodeMetrics();
-		//getProcessMetrics();
-    	saveDataset();
-	}
-
-	private static void getHasBeenIntroduced() {
-	}
-
-	private static void getHasBeenFixed() {
-	}
-
-	private static void getIsBuggy(String path, String idCommit) {	}
-
-	private static void setRepository() throws IOException, RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, GitAPIException {
-		//repositoryFileについて、そのidCommitへcheckout。
-        Git git = Git.open(new File(pathRepositoryFile));
-        git.checkout().setName(idCommitFileTo).call();
-	}
-
-	private static void setEmptyRecords() {
-		Path rootDir = Paths.get(pathRepositoryFile);
+	public static void main(String[] args){
 		try {
-			List<String> paths =Files.walk(rootDir)
+			loadFiles();
+			setEmptyRecords();
+		    calcCodeMetrics(pathRepositoryFile, intervalCommitFile[1], "sourcefile");
+		    calcProcessMetrics(intervalCommitMethod, "method");
+    	    saveDataset();
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static String[] findFiles(String dirRoot, String ext, String extIgnore) {
+		List<String> pathsFile = new ArrayList<String>();
+		try {
+			pathsFile.addAll(
+					Files.walk(Paths.get(dirRoot))
 					.map(Path::toString)
-					.filter(p -> p.endsWith(".java"))
-					.filter(p -> !p.contains("test"))
-					.collect(Collectors.toList());
-			for(String path: paths) {
-				records.put(path, new Record());
+					.filter(p -> p.endsWith(ext))
+					.filter(p -> !p.contains(extIgnore))
+					.collect(Collectors.toList())
+					);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return pathsFile.toArray(new String[pathsFile.size()]);
+	}
+
+	private static String[] findFiles(String[] dirsRoot, String ext, String extIgnore) {
+		List<String> pathsFile = new ArrayList<String>();
+		try {
+			for(String dirRoot: dirsRoot) {
+				pathsFile.addAll(
+					Files.walk(Paths.get(dirRoot))
+					.map(Path::toString)
+					.filter(p -> p.endsWith(ext))
+					.filter(p -> !p.contains(extIgnore))
+					.collect(Collectors.toList())
+					);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+		return pathsFile.toArray(new String[pathsFile.size()]);
+	}
+
+	public static String readFile(final String path){
+		String value=null;
+	    try {
+	    	value = Files.lines(Paths.get(path), Charset.forName("UTF-8")).collect(Collectors.joining(System.getProperty("line.separator")));
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally{
+			return value;
+		}
+	}
+
+	private static void checkoutRepository(String pathRepository, String idCommit) throws IOException, RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, GitAPIException {
+		//repositoryについて、そのコミットidへcheckout。
+        Git git = Git.open(new File(pathRepository));
+        git.checkout().setName(idCommit).call();
+	}
+
+	private static void setEmptyRecords() {
+		String[] pathSources = findFiles(pathRepositoryMethod, ".mjava", "test");
+		for(String pathSource: pathSources) {
+			recordsAll.put(pathSource, new Record());
 		}
 	}
 
@@ -105,10 +142,10 @@ public class Test {
 		for(File file: ProgressBar.wrap(filesCommit, "loadFiles")) {
 			String path =file.toString();
 			try {
-				String strCommit=readAll(path);
+				String strCommit=readFile(path);
 				ObjectMapper mapper = new ObjectMapper();
 				Commit commit = mapper.readValue(strCommit, new TypeReference<Commit>() {});
-				commits.put(commit.id,commit);
+				commitsAll.put(commit.id,commit);
 			} catch (JsonParseException e) {
 				e.printStackTrace();
 			} catch (JsonMappingException e) {
@@ -119,9 +156,9 @@ public class Test {
 		}
 		//sourceFiles
 		try {
-			String strSourceFile=readAll(pathSourceFiles);
+			String strSourceFile=readFile(pathSourceFiles);
 			ObjectMapper mapper = new ObjectMapper();
-			sourceFiles = mapper.readValue(strSourceFile, new TypeReference<HashMap<String, SourceFile>>() {});
+			modulesAll = mapper.readValue(strSourceFile, new TypeReference<HashMap<String, Module>>() {});
 		} catch (JsonParseException e) {
 			e.printStackTrace();
 		} catch (JsonMappingException e) {
@@ -131,7 +168,7 @@ public class Test {
 		}
 		//bugs
 		try {
-			String strBugs=readAll(pathBugs);
+			String strBugs=readFile(pathBugs);
 			ObjectMapper mapper = new ObjectMapper();
 			bugs = mapper.readValue(strBugs, new TypeReference<HashMap<String, HashMap<String, String[]>>>() {});
 		} catch (JsonParseException e) {
@@ -155,8 +192,8 @@ public class Test {
 		    Serializer serializer = CsvIOFactory.createFactory(config, Record.class).createSerializer();
 
 			serializer.open(writer);
-			for(String key: records.keySet()) {
-				Record record=records.get(key);
+			for(String key: recordsAll.keySet()) {
+				Record record=recordsAll.get(key);
 				serializer.write(record);
 			}
 			serializer.close(true);
@@ -168,15 +205,14 @@ public class Test {
 		}
     }
 
-	private static void getCodeMetrics() {
+	private static void calcCodeMetrics(String pathRepository, String idCommit, String granurarity) throws RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, IOException, GitAPIException {
+		checkoutRepository(pathRepository, idCommit);
 		final String[] sourcePathDirs = {};
-		final String[] libs = getLibraries(pathRepositoryFile);
-		String[] sources = new String[records.size()];
-		records.keySet().toArray(sources);
+		final String[] libraries      = findFiles(pathDirsLibrary, ".jar", "");
+		final String[] sources        = findFiles(pathRepositoryFile, ".java", "test");
 
 		ASTParser parser = ASTParser.newParser(AST.JLS3);
 		final Map<String,String> options = JavaCore.getOptions();
-		//caution. to calculateIDMethod http://www.nextdesign.co.jp/tips/tips_eclipse_jdt.html
 		options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_1_6);
 		options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_1_6);
 		options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_1_6);
@@ -185,353 +221,211 @@ public class Test {
 		parser.setKind(ASTParser.K_COMPILATION_UNIT);
 		parser.setBindingsRecovery(true);
 		parser.setStatementsRecovery(true);
-		parser.setEnvironment(libs, sourcePathDirs, null, true);
+		parser.setEnvironment(libraries, sourcePathDirs, null, true);
 
 		String[] keys = new String[] {""};
 		Requestor requestor = new Requestor();
 		parser.createASTs(sources, null, keys, requestor, new NullProgressMonitor());
-		records=requestor.records;
-
-		for(String pathCalled: requestor.methodsCalled) {
-			for(String path: records.keySet()) {
-				if(path.equals(pathCalled)) {
-					records.get(path).fanIN++;
+		recordsAll=requestor.records;
+		for(String idMethodCalled: requestor.methodsCalled) {
+			for(String pathMethod: recordsAll.keySet()) {
+				String id0 =recordsAll.get(pathMethod).id;
+				String id1 = idMethodCalled;
+				if(id0.equals(id1)) {
+					recordsAll.get(pathMethod).fanIN++;
 				}
 			}
 		}
 	}
-/*
-	private static void getProcessMetrics() {
-		getIsBuggy();
-		getHasBeenFixed();
-		getHasBeenIntroduced();
 
-		History tmp=null;
-		List<Commit> commits=null;
-		for(String path: records.keySet()) {
-			Record record = records.get(path);
-			System.out.println(count+ "/" + records.keySet().size());
-			if(history==null)continue;
-			HashSet<Commit> nodes=new HashSet<Commit>();
-			HashMap<String, ArrayList<String>> edges= new HashMap<String, ArrayList<String>>();
-			HashMap<String, ArrayList<String>> edgesReverse= new HashMap<String, ArrayList<String>>();
-			ArrayList<String[]> toBeSearched = new ArrayList<String[]>();
-			String[] tmp0=new String[2];
-			tmp0[0]=path;
-			tmp0[1]=history.commits.get(history.commits.size()-1).id;
-			toBeSearched.add(tmp0);
-			while(0<toBeSearched.size()) {
-				History historyTmp=historiesAllfile.get(toBeSearched.get(0)[0]);
-				for(int i=historyTmp.commits.size()-1; 0<=i; i--) {
-					if(historyTmp.commits.get(i).id.equals(toBeSearched.get(0)[1])) {
-						for(int j=i;0<=j;j--) {
-							Commit commit=historyTmp.commits.get(j);
-							if(commit.type==1 | commit.type==2) {
-								String[] tmp1=new String[2];
-								tmp1[0]=commit.pathOld;
-								tmp1[1]=commit.id;
-								toBeSearched.add(tmp1);
-							    edgesReverse.put(commit.id, historyTmp.commit2Childs.get(commit.id));
-							}else {
-							    nodes.add(commit);
-							    edges.put(commit.id, historyTmp.commit2Parents.get(commit.id));
-							    if(!edgesReverse.keySet().contains(commit.id))edgesReverse.put(commit.id, historyTmp.commit2Childs.get(commit.id));
-							}
-						}
-						break;
-					}
-				}
-				toBeSearched.remove(0);
-			}
+	//あるファイルについて、一通りのプロセスメトリクスを取得する。
+	private static void calcProcessMetrics(String[] intervalCommit, String granurarity) {
+		for(String pathModule: recordsAll.keySet()) {
+			Module moduleTarget = modulesAll.get(pathModule);
 
-			commits=new ArrayList<Commit>();
-
-
-			int periodFrom = Integer.MAX_VALUE;
-			for(Commit commit: nodes) {
-				if(commit.date<periodFrom) {
-					periodFrom=commit.date;
-				}
-			}
-			int periodTo = dateUntil;
-			record.period = (periodTo - periodFrom)/(60*60*24);
-
-			//コミットパスを考慮しない
-			for(Commit commit: nodes) {
-				if(dateFrom<commit.date
-						& commit.date<dateUntil
-						& !commit.isMerge
-						) {
-					commits.add(commit);
-				}
-			}
-
-
-			commits.sort((a,b)->a.date-b.date);
-
-			getA();
+			Record record = recordsAll.get(pathModule);
+			record.moduleHistories= calcModuleHistories(moduleTarget, intervalCommit);
+			record.devTotal       = calcDevTotal(moduleTarget, intervalCommit);
+			record.devMajor       = calcDevMajor(moduleTarget, intervalCommit);
+			record.devMinor       = calcDevMinor(moduleTarget, intervalCommit);
+			record.ownership      = calcOwnership(moduleTarget, intervalCommit);
+			record.elseAdded      = calcElseAdded(moduleTarget, intervalCommit);
+			record.elseDeleted    = calcElseDeleted(moduleTarget, intervalCommit);
+			//record.fixChgNum      = calcFixChgNum(moduleTarget, intervalCommit);
+			//record.pastBugNum     = calcPastBugNum(moduleTarget, intervalCommit);
+			//record.bugIntroNum    = calcBugIntroNum(moduleTarget, intervalCommit);
+			//record.logCoupNum     = calcLogCoupNum(moduleTarget, intervalCommit);
+			//record.period         = calcPeriod(moduleTarget, intervalCommit);
+			//record.avgInterval    = calcAvgInterval(moduleTarget, intervalCommit);
+			//record.maxInterval    = calcMaxInterval(moduleTarget, intervalCommit);
+			//record.minInterval    = calcMinInterval(moduleTarget, intervalCommit);
+			//record.stmtAdded      = calcStmtAdded(moduleTarget, intervalCommit);
+			//record.maxStmtAdded   = calcMaxStmtAdded(moduleTarget, intervalCommit);
+			//record.avgStmtAdded   = calcAvgStmtAdded(moduleTarget, intervalCommit);
+			//record.stmtDeleted    = calcStmtDeleted(moduleTarget, intervalCommit);
+			//record.maxStmtDeleted = calcMaxStmtDeleted(moduleTarget, intervalCommit);
+			//record.avgStmtDeleted = calcAvgStmtDeleted(moduleTarget, intervalCommit);
+			//record.churn          = calcChurn(moduleTarget, intervalCommit);
+			//record.maxChurn       = calcMaxChurn(moduleTarget, intervalCommit);
+			//record.avgChurn       = calcAvgChurn(moduleTarget, intervalCommit);
+			//record.decl           = calcDecl(moduleTarget, intervalCommit);
+			//record.cond           = calcCond(moduleTarget, intervalCommit);
 		}
 	}
 
-
-	private static void getA(){
-		Record record = new Record();
-		ArrayList<String> authors = new ArrayList<String>();
-
-		//try {
-			int methodHistories=0;
-			int pastBugNum=0;
-			int fixChgNum=0;
-			int bugIntroNum=0;
-			int logCoupNum=0;
-			ArrayList<Integer> stmtAddeds = new ArrayList<Integer>();
-			ArrayList<Integer> stmtDeleteds = new ArrayList<Integer>();
-			ArrayList<Integer> churns = new ArrayList<Integer>();
-			ArrayList<Integer> decls = new ArrayList<Integer>();
-			ArrayList<Integer> conds = new ArrayList<Integer>();
-			ArrayList<Integer> elseAddeds = new ArrayList<Integer>();
-			ArrayList<Integer> elseDeleteds = new ArrayList<Integer>();
-
-			List<String> statements = Arrays.asList("AssertStatement","BreakStatement","ConstructorInvocation","ContinueStatement","DoStatement","EnhancedForStatement", "ExpressionStatement","ForStatement","IfStatement","ReturnStatement","SuperConstructorInvocation","SwitchStatement","ThrowStatement","TryStatement","WhileStatement");
-			List<String> operatorsCondition = Arrays.asList("<", ">", "<=", ">=", "==", "!=", "^", "&", "|", "&&", "||");
-
-			String sourcePrev =  null;
-			String sourceCurrent =null;
-
-
-			for(int i=0;i<commits.size();i++) {
-				if(0<i && StringUtils.equals(commits.get(i-1).sourceNew, commits.get(i).sourceNew))continue;
-				String strPre;
-				String strPost;
-				if(commits.get(i).sourceOld==null) {
-			        String tmp=commits.get(i).sourceNew;
-			        Pattern patternPre = Pattern.compile("[\\s\\S.]*?(?=\\{)");
-			        Matcher matcherPre = patternPre.matcher(tmp);
-			        if(matcherPre.find()) {
-					    strPre=matcherPre.group();
-			        }else {
-			        	strPre="";
-			        }
-				    Pattern patternPost = Pattern.compile("(?<=\\{)[\\s\\S.]*");
-				    Matcher matcherPost = patternPost.matcher(tmp);
-				    if(matcherPost.find()) {
-				    	strPost=matcherPost.group();
-				    }else {
-				    	strPost="}";
-				    }
-					sourcePrev= "public class Test{"+strPre+
-							"{"+
-							"token();\n"+
-							"token();\n"+
-							"token();\n"+
-							"token();\n"+
-							"token();\n"+
-							"token();\n"+
-					    	"token();\n"+
-							"token();\n"+
-							"token();\n"+
-							"token();\n"+
-							"}"+
-							"}";
-					sourceCurrent ="public class Test{"+strPre+
-							"{"+
-							"token();\n"+
-							"token();\n"+
-							"token();\n"+
-							"token();\n"+
-							"token();\n"+
-					        "token();\n"+
-							"token();\n"+
-							"token();\n"+
-							"token();\n"+
-							"token();\n"+
-							strPost+
-							"}";
-				}else {
-					sourcePrev= "public class Test{"+commits.get(i).sourceOld+"}";
-					sourceCurrent ="public class Test{"+commits.get(i).sourceNew+"}";
-				}
-
-				FileDistiller distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
-				try {
-				    distiller.extractClassifiedSourceCodeChanges(sourcePrev, sourceCurrent);
-				} catch(Exception e) {
-				    System.err.println("Warning: error while change distilling. " + e.getMessage());
-				}
-
-				List<SourceCodeChange> changes = distiller.getSourceCodeChanges();
-				if(0 < changes.size()) {
-					int stmtAdded=0;
-					int stmtDeleted=0;
-					int churn=0;
-					int decl=0;
-					int cond=0;
-					int elseAdded=0;
-					int elseDeleted=0;
-					List<ChangeType> ctdecl= Arrays.asList(
-							ChangeType.METHOD_RENAMING,
-							ChangeType.PARAMETER_DELETE,
-							ChangeType.PARAMETER_INSERT,
-							ChangeType.PARAMETER_ORDERING_CHANGE,
-							ChangeType.PARAMETER_RENAMING,
-							ChangeType.PARAMETER_TYPE_CHANGE,
-							ChangeType.RETURN_TYPE_INSERT,
-							ChangeType.RETURN_TYPE_DELETE,
-							ChangeType.RETURN_TYPE_CHANGE,
-							ChangeType.PARAMETER_TYPE_CHANGE
-							);
-				    for(SourceCodeChange change : changes) {
-				    	EntityType et = change.getChangedEntity().getType();
-				    	if(change.getChangeType()==ChangeType.STATEMENT_INSERT)stmtAdded++;
-				    	else if(change.getChangeType()==ChangeType.STATEMENT_DELETE)stmtDeleted++;
-				    	else if(ctdecl.contains(change.getChangeType()))decl++;
-				    	else if(change.getChangeType()==ChangeType.CONDITION_EXPRESSION_CHANGE)cond++;
-				    	else if(change.getChangeType()==ChangeType.ALTERNATIVE_PART_INSERT & et.toString().equals("ELSE_STATEMENT") )elseAdded++;
-				    	else if(change.getChangeType()==ChangeType.ALTERNATIVE_PART_DELETE & et.toString().equals("ELSE_STATEMENT"))elseDeleted++;
-				    }
-					churn=stmtAdded-stmtDeleted;
-					methodHistories++;
-					if(commits.get(i).bugFix!=null)pastBugNum++;
-
-					authors.add(commits.get(i).author);
-					stmtAddeds.add(stmtAdded);
-					stmtDeleteds.add(stmtDeleted);
-					churns.add(churn);
-					decls.add(decl);
-					conds.add(cond);
-					elseAddeds.add(elseAdded);
-					elseDeleteds.add(elseDeleted);
-					//if(commits.get(i).bugFix!=null)method.isBuggy=1;
-				}else {
-					continue;
-				}
-			}
-			if(methodHistories==0)return;
-			Set<String> authorsSet = new HashSet<String>(authors);
-			record.methodHistories=methodHistories;
-			record.devTotal=authorsSet.size();
-			record.stmtAdded=stmtAddeds.stream().mapToInt(e->e).sum();
-			record.maxStmtAdded=stmtAddeds.stream().mapToInt(e->e).max().getAsInt();
-			record.avgStmtAdded=record.stmtAdded/(float)methodHistories;
-			record.stmtDeleted=stmtDeleteds.stream().mapToInt(e->e).sum();
-			record.maxStmtDeleted=stmtDeleteds.stream().mapToInt(e->e).max().getAsInt();
-			record.avgStmtDeleted=record.stmtDeleted/(float)methodHistories;
-			record.churn=churns.stream().mapToInt(e->e).sum();
-			record.maxChurn=churns.stream().mapToInt(e->e).max().getAsInt();
-			record.avgChurn=record.churn/(float)methodHistories;
-			record.decl=decls.stream().mapToInt(e->e).sum();
-			record.cond=conds.stream().mapToInt(e->e).sum();
-			record.elseAdded=elseAddeds.stream().mapToInt(e->e).sum();
-			record.elseDeleted=elseDeleteds.stream().mapToInt(e->e).sum();
-			record.pastBugNum=pastBugNum;
-			record.fixChgNum=fixChgNum;
-			record.bugIntroNum=bugIntroNum;
-			record.logCoupNum=logCoupNum;
-			record.avgInterval = record.period / (float)record.methodHistories;
-			if(2<=commits.size()) {
-			    int minInterval=Integer.MAX_VALUE;
-			    int maxInterval=Integer.MIN_VALUE;
-			        for(int i=0;i<commits.size()-1;i++) {
-				        int interval=commits.get(i+1).date-commits.get(i).date;
-				        if(maxInterval < interval) {
-					        maxInterval = interval;
-				        }
-				        if(interval < minInterval) {
-    				    	minInterval = interval;
-				        }
-			        }
-    			record.minInterval=minInterval/(60*60*24);
-			    record.maxInterval=maxInterval/(60*60*24);
-			}
-			record.devTotal=authorsSet.size();
-			for(Iterator<String> iterator = authorsSet.iterator(); iterator.hasNext(); ) {
-				String author=iterator.next();
-				float count=0;
-				for(int i=0;i<authors.size();i++) {
-					if(author.equals(authors.get(i))) {
-						count++;
-					}
-				}
-				float ratio=count/authors.size();
-				if(record.ownership<ratio) {
-					record.ownership=ratio;
-				}
-				if(0.20<ratio) {
-					record.devMajor++;
-				}else {
-					record.devMinor++;
-				}
-			}
-			record.isBuggy = 0;//commits.get(commits.size()-1).isBuggy? 1:0;
-			for(Commit commit: commits) {
-				/*
-				if(commit.bugFix!=null) {
-					method.isBuggy = 1;
-				}
-				*/
-/*
-				if(0 < commit.bugIntro.size()) {
-					String strRelease2Date=readAll(pathRelease2Date);
-					String strRevision2Date=readAll(pathRevision2Date);
-					ObjectMapper mapper = new ObjectMapper();
-					HashMap<String, Integer> release2Date=null;
-					HashMap<String, Integer> revision2Date=null;
-					try {
-						release2Date=mapper.readValue(strRelease2Date, new TypeReference<HashMap<String, Integer>>() {});
-						revision2Date=mapper.readValue(strRevision2Date, new TypeReference<HashMap<String, Integer>>() {});
-					} catch (JsonParseException e) {
-						e.printStackTrace();
-					} catch (JsonMappingException e) {
-						e.printStackTrace();
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-					int count=0;
-					int allFiles=records.size();
-					int dateRelease=release2Date.get(Integer.toString(release));
-
-
-					for(String id: commit.bugIntro) {
-					    if(commit.date <release2Date.get(Integer.toString(release))
-							    & release2Date.get(Integer.toString(release))< revision2Date.get(id)) {
-				            record.isBuggy = 1;
-					    }
-					}
-				}
-
-
-			}
-	}
-*/
-
-	private static String[] getLibraries(String pathFile) {
-		Path[] dirs = new Path[]{
-				Paths.get(pathPlugins),
-				Paths.get(pathFile)
-		};
-		List<String> classes=new ArrayList<String>();
-		try {
-			for(int i=0;i<dirs.length;i++) {
-				classes.addAll(Files.walk(dirs[i])
-						.map(Path::toString)
-						.filter(p -> p.endsWith(".jar"))
-						.collect(Collectors.toList()));
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return classes.toArray(new String[classes.size()]);
+	private static int calcPeriod(Module module, String[] intervalCommit) {
+		return 0;
 	}
 
+	private static int calcElseDeleted(Module module, String[] intervalCommit) {
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
+		int elseDeleted=0;
+		for(int i=0;i<commitOnModules.size();i++) {
+			String idCommit = commitOnModules.get(i).id;
+			String pathNew = commitOnModules.get(i).pathNew;
+			String pathOld = commitOnModules.get(i).pathOld;
+			Modification modification = commitsAll.get(idCommit).modifications.stream().filter(item->item.pathNew.equals(pathNew)&item.pathOld.contentEquals(pathOld)).findFirst().get();
+			String sourceOld= "public class Test{"+modification.sourceOld+"}";
+			String sourceNew ="public class Test{"+modification.sourceNew+"}";
 
-	public static String readAll(final String path){
-		String value=null;
-	    try {
-	    	value = Files.lines(Paths.get(path), Charset.forName("UTF-8")).collect(Collectors.joining(System.getProperty("line.separator")));
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally{
-			return value;
+			FileDistiller distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
+			try {
+			    distiller.extractClassifiedSourceCodeChanges(sourceOld, sourceNew);
+			} catch(Exception e) {
+			    System.err.println("Warning: error while change distilling. " + e.getMessage());
+			}
+
+			List<SourceCodeChange> changes = distiller.getSourceCodeChanges();
+			for(SourceCodeChange change : changes) {
+			    EntityType et = change.getChangedEntity().getType();
+		    	if(change.getChangeType()==ChangeType.ALTERNATIVE_PART_DELETE & et.toString().equals("ELSE_STATEMENT"))elseDeleted++;
+			}
 		}
+		return elseDeleted;
+	}
+
+	private static int calcElseAdded(Module module, String[] intervalCommit) {
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
+		int elseAdded=0;
+		for(int i=0;i<commitOnModules.size();i++) {
+			String idCommit = commitOnModules.get(i).id;
+			String pathNew = commitOnModules.get(i).pathNew;
+			String pathOld = commitOnModules.get(i).pathOld;
+			Modification modification = commitsAll.get(idCommit).modifications.stream().filter(item->item.pathNew.equals(pathNew)&item.pathOld.contentEquals(pathOld)).findFirst().get();
+			String sourceOld= "public class Test{"+modification.sourceOld+"}";
+			String sourceNew ="public class Test{"+modification.sourceNew+"}";
+
+			FileDistiller distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
+			try {
+			    distiller.extractClassifiedSourceCodeChanges(sourceOld, sourceNew);
+			} catch(Exception e) {
+			    System.err.println("Warning: error while change distilling. " + e.getMessage());
+			}
+
+			List<SourceCodeChange> changes = distiller.getSourceCodeChanges();
+			for(SourceCodeChange change : changes) {
+			    EntityType et = change.getChangedEntity().getType();
+			    if(change.getChangeType()==ChangeType.ALTERNATIVE_PART_INSERT & et.toString().equals("ELSE_STATEMENT") )elseAdded++;
+			}
+		}
+		return elseAdded;
+	}
+
+	private static double calcOwnership(Module module, String[] intervalCommit) {
+		Set<String> setAuthors = new HashSet<String>();
+		List<Commit> commits =calcCommitsInInterval(module, intervalCommit);
+		commits.stream().forEach(item->setAuthors.add(item.author));
+		List<String> authors = commits.stream().map(commit->commit.author).collect(Collectors.toList());
+		float ownership=0;
+		for(String author: setAuthors) {
+			int count = (int)authors.stream().filter(item->item.equals(author)).count();
+			if(ownership<count/(float)setAuthors.size()) {
+				ownership=count/(float)setAuthors.size();
+			}
+		}
+		return ownership;
+	}
+
+	private static int calcDevMinor(Module module, String[] intervalCommit) {
+		Set<String> setAuthors = new HashSet<String>();
+		List<Commit> commits =calcCommitsInInterval(module, intervalCommit);
+		commits.stream().forEach(item->setAuthors.add(item.author));
+		List<String> authors = commits.stream().map(commit->commit.author).collect(Collectors.toList());
+		int devMinor=0;
+		for(String author: setAuthors) {
+			int count = (int)authors.stream().filter(item->item.equals(author)).count();
+			if(count/(float)setAuthors.size()<0.20) {
+				devMinor++;
+			}
+		}
+		return devMinor;
+	}
+
+	private static int calcDevMajor(Module module, String[] intervalCommit) {
+		Set<String> setAuthors = new HashSet<String>();
+		List<Commit> commits =calcCommitsInInterval(module, intervalCommit);
+		commits.stream().forEach(item->setAuthors.add(item.author));
+		List<String> authors = commits.stream().map(commit->commit.author).collect(Collectors.toList());
+		int devMajor=0;
+		for(String author: setAuthors) {
+			int count = (int)authors.stream().filter(item->item.equals(author)).count();
+			if(0.20<count/(float)setAuthors.size()) {
+				devMajor++;
+			}
+		}
+		return devMajor;
+	}
+
+	private static int calcDevTotal(Module module, String[] intervalCommit) {
+		Set<String> setAuthors = new HashSet<String>();
+		List<Commit> commits =calcCommitsInInterval(module, intervalCommit);
+		commits.stream().forEach(item->setAuthors.add(item.author));
+		int devTotal=setAuthors.size();
+		return devTotal;
+	}
+
+	private static int calcModuleHistories(Module module, String[] intervalCommit) {
+		List<Commit> commits =calcCommitsInInterval(module, intervalCommit);
+		int moduleHistories=commits.size();
+		return moduleHistories;
+	}
+
+	private static List<Commit> calcCommitsInInterval(Module module, String[] intervalCommit){
+		List<Commit> commits = new ArrayList<Commit>();
+
+		int dateBegin = commitsAll.get(intervalCommit[0]).date;
+		int dateEnd   = commitsAll.get(intervalCommit[1]).date;
+		for(String idCommit:module.idCommit2CommitOnModule.keySet()) {
+			Commit commit = commitsAll.get(idCommit);
+			if(dateBegin<commit.date & commit.date<dateEnd) {
+				commits.add(commit);
+			}
+		}
+
+		return commits;
+	}
+
+	private static List<CommitOnModule> calcCommitOnModulesInInterval(Module module, String[] intervalCommit){
+		List<CommitOnModule> commitOnModules = new ArrayList<>();
+
+		int dateBegin = commitsAll.get(intervalCommit[0]).date;
+		int dateEnd   = commitsAll.get(intervalCommit[1]).date;
+		for(String idCommit:module.idCommit2CommitOnModule.keySet()) {
+			Commit commit = commitsAll.get(idCommit);
+			if(dateBegin<commit.date & commit.date<dateEnd) {
+				commitOnModules.add(module.idCommit2CommitOnModule.get(idCommit));
+			}
+		}
+
+		return commitOnModules;
+	}
+
+	private static void calcHasBeenIntroduced() {
+	}
+
+	private static void calcHasBeenFixed() {
+	}
+
+	private static void calcIsBuggy(String path, String idCommit) {
 	}
 }
