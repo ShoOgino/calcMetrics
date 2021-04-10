@@ -17,77 +17,51 @@ public class Record {
     //independent variable
     //code metrics
     @CsvField(pos = 3)
-    int fanIN=0;
-    @CsvField(pos = 4)
 	int fanOut=0;
-    @CsvField(pos = 5)
+    @CsvField(pos = 4)
     int parameters=0;
-    @CsvField(pos = 6)
+    @CsvField(pos = 5)
     int localVar=0;
-    @CsvField(pos = 7, converterType = DoubleConverter.class)
+    @CsvField(pos = 6, converterType = DoubleConverter.class)
     double commentRatio=0;
-    @CsvField(pos = 8)
+    @CsvField(pos = 7)
     long countPath=0;
-    @CsvField(pos = 9)
+    @CsvField(pos = 8)
     int complexity=0;
-    @CsvField(pos = 10)
+    @CsvField(pos = 9)
     int execStmt=0;
-    @CsvField(pos = 11)
+    @CsvField(pos = 10)
     int maxNesting=0;
 
     //process metrics
-    @CsvField(pos = 12)
+    @CsvField(pos = 11)
     int moduleHistories=0;
+    @CsvField(pos = 12)
+    int authors    = 0;
     @CsvField(pos = 13)
-    int devTotal    = 0;
-    @CsvField(pos = 14)
-    int devMinor    = 0;
-    @CsvField(pos = 15)
-    int devMajor    = 0;
-    @CsvField(pos = 16, converterType = DoubleConverter.class)
-    double ownership   = 0;
-    @CsvField(pos = 17)
-    int elseAdded=0;
-    @CsvField(pos = 18)
-    int elseDeleted=0;
-    @CsvField(pos = 19)
-    int fixChgNum = 0;
-    @CsvField(pos = 20)
-    int pastBugNum  = 0;
-    @CsvField(pos = 21)
-    int bugIntroNum = 0;
-    @CsvField(pos = 22)
-    int logCoupNum  = 0;
-    @CsvField(pos = 23)
-    int period      = 0;
-    @CsvField(pos = 24, converterType = DoubleConverter.class)
-    double avgInterval = 0;
-    @CsvField(pos = 25)
-    int maxInterval = 0;
-    @CsvField(pos = 26)
-    int minInterval = 0;
-    @CsvField(pos = 27)
     int stmtAdded=0;
-    @CsvField(pos = 28)
+    @CsvField(pos = 14)
     int maxStmtAdded=0;
-    @CsvField(pos = 29, converterType = DoubleConverter.class)
+    @CsvField(pos = 15, converterType = DoubleConverter.class)
     double avgStmtAdded=0;
-    @CsvField(pos = 30)
+    @CsvField(pos = 16)
     int stmtDeleted=0;
-    @CsvField(pos = 31)
+    @CsvField(pos = 17)
     int maxStmtDeleted=0;
-    @CsvField(pos = 32, converterType = DoubleConverter.class)
+    @CsvField(pos = 18, converterType = DoubleConverter.class)
     double avgStmtDeleted=0;
-    @CsvField(pos = 33)
+    @CsvField(pos = 19)
     int churn=0;
-    @CsvField(pos = 34)
+    @CsvField(pos = 20)
     int maxChurn=0;
-    @CsvField(pos = 35, converterType = DoubleConverter.class)
+    @CsvField(pos = 21, converterType = DoubleConverter.class)
     double avgChurn=0;
-    @CsvField(pos = 36)
+    @CsvField(pos = 22)
     int decl=0;
-    @CsvField(pos = 37)
+    @CsvField(pos = 23)
     int cond=0;
-    //@CsvField(pos = 35, converterType = DoubleConverter.class)
-    //double hcm = 0;
+    @CsvField(pos = 24)
+    int elseAdded=0;
+    @CsvField(pos = 25)
+    int elseDeleted=0;
 }

@@ -16,15 +16,17 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.CheckoutConflictException;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.InvalidRefNameException;
@@ -48,13 +50,10 @@ import net.sf.jsefa.csv.CsvIOFactory;
 import net.sf.jsefa.csv.config.CsvConfiguration;
 
 public class Test {
-	private static String   pathProject           = "C:\\Users\\login\\data\\1_task\\20200421_094917\\projects\\MLTool\\datasets\\egit\\raw";
-	private static String   pathRepositoryFile = pathProject+"\\repositoryFile";
-	private static String   pathRepositoryMethod = pathProject+"\\repositoryMethod";
-	private static String[] pathDirsLibrary = {pathRepositoryFile};
-	private static String[] intervalCommitMethod = {"e47f0c1c1390a956f5f8b19e62bb933c614492fc", "f020b5381b96f3a2dde3d748cd43283d0968acf5"};
-	private static String[] intervalCommitFile   = {"dfbdc456d8645fc0c310b5e15cf8d25d8ff7f84b","0cc8d32aff8ce91f71d2cdac8f3e362aff747ae7"};
+	private static String   pathProject           = "C:\\Users\\ShoOgino\\data\\1_task\\20200421_094917\\projects\\MLTool\\datasets\\egit";
+	private static String[] intervalCommitMethod = {"e47f0c1c1390a956f5f8b19e62bb933c614492fc", "1241472396d11fe0e7b31c6faf82d04d39f965a6"};
 
+	private static String pathRepositoryMethod = pathProject+"\\repositoryMethod";
 	private static String pathDataset = pathProject+"/datasets/"+intervalCommitMethod[0].substring(0,8)+"_"+intervalCommitMethod[1].substring(0,8)+".csv";
 	private static String pathSourceFiles = pathProject+"/sourceFiles.json";
 	private static String pathCommits = pathProject+"/commits";
@@ -68,16 +67,125 @@ public class Test {
 	public static void main(String[] args){
 		try {
 			loadFiles();
-			setEmptyRecords();
-		    calcCodeMetrics(pathRepositoryFile, intervalCommitFile[1], "sourcefile");
+			setEmptyRecords(pathRepositoryMethod, intervalCommitMethod[1]);
+		    //calcCodeMetrics(pathRepositoryFile, intervalCommitFile[1], "sourcefile");
+		    calcCodeMetricsTest(pathRepositoryMethod, intervalCommitMethod, "method");
 		    calcProcessMetrics(intervalCommitMethod, "method");
-    	    saveDataset();
+    	    saveRecords();
 		}catch(Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	private static String[] findFiles(String dirRoot, String ext, String extIgnore) {
+	private static void calcCodeMetricsTest(String pathRepositoryFile, String[] intervalCommit, String guranurality) throws RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, IOException, GitAPIException {
+		checkoutRepository(pathRepositoryMethod, intervalCommit[1]);
+		for(String pathModule: ProgressBar.wrap(recordsAll.keySet(), "calcCodeMetrics")){
+			Record record = recordsAll.get(pathModule);
+			Module module = modulesAll.get(pathModule);
+			//record.fanIN        = calcFanIN(module, intervalCommit);
+			record.fanOut       = calcFanOut(module, intervalCommit);
+			record.parameters   = calcParameters(module, intervalCommit);
+			record.localVar     = calcLocalVar(module, intervalCommit);
+			record.commentRatio = calcCommentRatio(module, intervalCommit);
+			record.countPath    = calcCountPath(module, intervalCommit);
+			record.complexity   = calcComplexity(module, intervalCommit);
+			record.execStmt     = calcExecStmt(module, intervalCommit);
+			record.maxNesting   = calcMaxNesting(module, intervalCommit);
+		}
+	}
+
+	private static int calcMaxNesting(Module module, String[] intervalCommit) {
+		CompilationUnit unit =getCompilationUnit(module);
+		VisitorMaxNesting visitorMaxNesting = new VisitorMaxNesting();
+		unit.accept(visitorMaxNesting);
+		return visitorMaxNesting.maxNesting;
+	}
+
+	private static int calcExecStmt(Module module, String[] intervalCommit) {
+		CompilationUnit unit =getCompilationUnit(module);
+		VisitorExecStmt visitorExecStmt = new VisitorExecStmt();
+		unit.accept(visitorExecStmt);
+		return visitorExecStmt.execStmt;
+	}
+
+	private static int calcComplexity(Module module, String[] intervalCommit) {
+		CompilationUnit unit =getCompilationUnit(module);
+		VisitorComplexity visitorComplexity = new VisitorComplexity();
+		unit.accept(visitorComplexity);
+		return visitorComplexity.complexity;
+	}
+
+	private static long calcCountPath(Module module, String[] intervalCommit) {
+		CompilationUnit unit =getCompilationUnit(module);
+		VisitorCountPath visitorCountPath = new VisitorCountPath();
+		unit.accept(visitorCountPath);
+		long countPath=1;
+		for(int branch: visitorCountPath.branches) {
+			countPath*=branch;
+		}
+		return countPath;
+	}
+
+	private static double calcCommentRatio(Module module, String[] intervalCommit) {		String regex  = "\n|\r\n";
+		String sourceMethod = readFile(pathRepositoryMethod+"/"+module.path);
+		String[] linesMethod = sourceMethod.split(regex, 0);
+
+		int countLineCode=0;
+		int countLineComment=0;
+		boolean inComment=false;
+		for(String line:linesMethod) {
+		    countLineCode++;
+		    if(line.matches(".*\\*/\\S+")) {
+    			inComment=false;
+		    }else if(line.matches(".*\\*/\\s*")) {
+    			inComment=false;
+		    	countLineComment++;
+		    }else if(inComment) {
+    		    countLineComment++;
+		    }else if(line.matches("\\S+/\\*.*")){
+		    	inComment=true;
+		    }else if(line.matches("\\s*/\\*.*")){
+		    	countLineComment++;
+		    	inComment=true;
+		    }else if(line.matches("\\S+//.*")) {
+			}else if(line.matches("\\s*//.*")) {
+				countLineComment++;
+			}
+		}
+	   	return (float) countLineComment/ (float)countLineCode;
+	}
+
+	private static int calcLocalVar(Module module, String[] intervalCommit) {
+		CompilationUnit unit =getCompilationUnit(module);
+		VisitorLocalVar visitorLocalVar = new VisitorLocalVar();
+		unit.accept(visitorLocalVar);
+		return visitorLocalVar.NOVariables;
+	}
+
+	private static CompilationUnit getCompilationUnit(Module module) {
+		String sourceMethod = readFile(pathRepositoryMethod+"/"+module.path);
+		String sourceClass = "public class Dummy{"+sourceMethod+"}";
+		ASTParser parser = ASTParser.newParser(AST.JLS4);
+		parser.setSource(sourceClass.toCharArray());
+		CompilationUnit unit =(CompilationUnit) parser.createAST(new NullProgressMonitor());
+		return unit;
+	}
+
+	private static int calcParameters(Module module, String[] intervalCommit) {
+		CompilationUnit unit =getCompilationUnit(module);
+		VisitorMethodDeclaration visitorMethodDeclaration = new VisitorMethodDeclaration();
+		unit.accept(visitorMethodDeclaration);
+		return visitorMethodDeclaration.parameters;
+	}
+
+	private static int calcFanOut(Module module, String[] intervalCommit) {
+		CompilationUnit unit =getCompilationUnit(module);
+		VisitorFanout visitor = new VisitorFanout();
+		unit.accept(visitor);
+		return visitor.fanout;
+	}
+
+	private static List<String> findFiles(String dirRoot, String ext, String extIgnore) {
 		List<String> pathsFile = new ArrayList<String>();
 		try {
 			pathsFile.addAll(
@@ -90,10 +198,10 @@ public class Test {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return pathsFile.toArray(new String[pathsFile.size()]);
+		return pathsFile;
 	}
 
-	private static String[] findFiles(String[] dirsRoot, String ext, String extIgnore) {
+	private static List<String> findFiles(String[] dirsRoot, String ext, String extIgnore) {
 		List<String> pathsFile = new ArrayList<String>();
 		try {
 			for(String dirRoot: dirsRoot) {
@@ -108,7 +216,7 @@ public class Test {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return pathsFile.toArray(new String[pathsFile.size()]);
+		return pathsFile;
 	}
 
 	public static String readFile(final String path){
@@ -124,17 +232,26 @@ public class Test {
 
 	private static void checkoutRepository(String pathRepository, String idCommit) throws IOException, RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, GitAPIException {
 		//repositoryについて、そのコミットidへcheckout。
-        Git git = Git.open(new File(pathRepository));
+		Git git = Git.open(new File(pathRepository));
+		git.reset().setMode(ResetCommand.ResetType.HARD).call();
+		git.clean().call();
         git.checkout().setName(idCommit).call();
 	}
 
-	private static void setEmptyRecords() {
-		String[] pathSources = findFiles(pathRepositoryMethod, ".mjava", "test");
-		for(String pathSource: pathSources) {
-			recordsAll.put(pathSource, new Record());
+	private static void setEmptyRecords(String pathRepository, String idCommit) throws RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, IOException, GitAPIException {
+		checkoutRepository(pathRepository, idCommit);
+		List<String> pathSources = findFiles(pathRepositoryMethod, ".mjava", "test");
+		for(String pathSource: ProgressBar.wrap(pathSources, "setEmptyRecords")) {
+			String prefix = pathRepositoryMethod+"\\";
+		    int index = pathSource.indexOf(prefix);
+		    String pathModule = pathSource.substring(index+prefix.length()).replace("\\", "/");
+		    Record record = new Record();
+		    record.path=pathModule;
+			recordsAll.put(pathModule, record);
 		}
 	}
 
+	//コミット、モジュール、バグについてまとめたファイルをロードする。
 	private static void loadFiles() {
 		//commits
 		File fileCommits = new File(pathCommits);
@@ -154,11 +271,11 @@ public class Test {
 				e.printStackTrace();
 			}
 		}
-		//sourceFiles
+		//module
 		try {
-			String strSourceFile=readFile(pathSourceFiles);
+			String strModule=readFile(pathSourceFiles);
 			ObjectMapper mapper = new ObjectMapper();
-			modulesAll = mapper.readValue(strSourceFile, new TypeReference<HashMap<String, Module>>() {});
+			modulesAll = mapper.readValue(strModule, new TypeReference<HashMap<String, Module>>() {});
 		} catch (JsonParseException e) {
 			e.printStackTrace();
 		} catch (JsonMappingException e) {
@@ -180,7 +297,8 @@ public class Test {
 		}
 	}
 
-    private static void saveDataset() {
+	//算出されたレコードをファイルに保存する。
+    private static void saveRecords() {
 		try {
 			FileOutputStream fos= new FileOutputStream(pathDataset);
 			OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
@@ -205,97 +323,267 @@ public class Test {
 		}
     }
 
-	private static void calcCodeMetrics(String pathRepository, String idCommit, String granurarity) throws RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, IOException, GitAPIException {
-		checkoutRepository(pathRepository, idCommit);
-		final String[] sourcePathDirs = {};
-		final String[] libraries      = findFiles(pathDirsLibrary, ".jar", "");
-		final String[] sources        = findFiles(pathRepositoryFile, ".java", "test");
 
-		ASTParser parser = ASTParser.newParser(AST.JLS3);
-		final Map<String,String> options = JavaCore.getOptions();
-		options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_1_6);
-		options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_1_6);
-		options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_1_6);
-		parser.setCompilerOptions(options);
-		parser.setResolveBindings(true);
-		parser.setKind(ASTParser.K_COMPILATION_UNIT);
-		parser.setBindingsRecovery(true);
-		parser.setStatementsRecovery(true);
-		parser.setEnvironment(libraries, sourcePathDirs, null, true);
+	//全ファイルについて、プロセスメトリクスを算出する。
+	private static void calcProcessMetrics(String[] intervalCommit, String granurarity) {
+		for(String pathModule: ProgressBar.wrap(recordsAll.keySet(), "calcProcessMetrics")){
+			Record record = recordsAll.get(pathModule);
+			Module module = modulesAll.get(pathModule);
+			record.moduleHistories= calcModuleHistories(module, intervalCommit);
+			record.authors       = calcDevTotal(module, intervalCommit);
+			record.stmtAdded      = calcStmtAdded(module, intervalCommit);
+			record.maxStmtAdded   = calcMaxStmtAdded(module, intervalCommit);
+			record.avgStmtAdded   = calcAvgStmtAdded(module, intervalCommit);
+			record.stmtDeleted    = calcStmtDeleted(module, intervalCommit);
+			record.maxStmtDeleted = calcMaxStmtDeleted(module, intervalCommit);
+			record.avgStmtDeleted = calcAvgStmtDeleted(module, intervalCommit);
+			record.churn          = calcChurn(module, intervalCommit);
+			record.maxChurn       = calcMaxChurn(module, intervalCommit);
+			record.avgChurn       = calcAvgChurn(module, intervalCommit);
+			record.decl           = calcDecl(module, intervalCommit);
+			record.cond           = calcCond(module, intervalCommit);
+			record.elseAdded      = calcElseAdded(module, intervalCommit);
+			record.elseDeleted    = calcElseDeleted(module, intervalCommit);
+			record.isBuggy        = calcIsBuggy(module, intervalCommit);
+		}
+	}
 
-		String[] keys = new String[] {""};
-		Requestor requestor = new Requestor();
-		parser.createASTs(sources, null, keys, requestor, new NullProgressMonitor());
-		recordsAll=requestor.records;
-		for(String idMethodCalled: requestor.methodsCalled) {
-			for(String pathMethod: recordsAll.keySet()) {
-				String id0 =recordsAll.get(pathMethod).id;
-				String id1 = idMethodCalled;
-				if(id0.equals(id1)) {
-					recordsAll.get(pathMethod).fanIN++;
-				}
+	private static int calcCond(Module module, String[] intervalCommit) {
+		int cond=0;
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
+		for(int i=0;i<commitOnModules.size();i++) {
+			CommitOnModule commitOnModule = commitOnModules.get(i);
+			List<SourceCodeChange> changes = calcChanges(commitOnModule);
+			for(SourceCodeChange change : changes) {
+			    EntityType et = change.getChangedEntity().getType();
+		    	if(change.getChangeType()==ChangeType.CONDITION_EXPRESSION_CHANGE)cond++;
 			}
 		}
+		return cond;
 	}
 
-	//あるファイルについて、一通りのプロセスメトリクスを取得する。
-	private static void calcProcessMetrics(String[] intervalCommit, String granurarity) {
-		for(String pathModule: recordsAll.keySet()) {
-			Module moduleTarget = modulesAll.get(pathModule);
-
-			Record record = recordsAll.get(pathModule);
-			record.moduleHistories= calcModuleHistories(moduleTarget, intervalCommit);
-			record.devTotal       = calcDevTotal(moduleTarget, intervalCommit);
-			record.devMajor       = calcDevMajor(moduleTarget, intervalCommit);
-			record.devMinor       = calcDevMinor(moduleTarget, intervalCommit);
-			record.ownership      = calcOwnership(moduleTarget, intervalCommit);
-			record.elseAdded      = calcElseAdded(moduleTarget, intervalCommit);
-			record.elseDeleted    = calcElseDeleted(moduleTarget, intervalCommit);
-			//record.fixChgNum      = calcFixChgNum(moduleTarget, intervalCommit);
-			//record.pastBugNum     = calcPastBugNum(moduleTarget, intervalCommit);
-			//record.bugIntroNum    = calcBugIntroNum(moduleTarget, intervalCommit);
-			//record.logCoupNum     = calcLogCoupNum(moduleTarget, intervalCommit);
-			//record.period         = calcPeriod(moduleTarget, intervalCommit);
-			//record.avgInterval    = calcAvgInterval(moduleTarget, intervalCommit);
-			//record.maxInterval    = calcMaxInterval(moduleTarget, intervalCommit);
-			//record.minInterval    = calcMinInterval(moduleTarget, intervalCommit);
-			//record.stmtAdded      = calcStmtAdded(moduleTarget, intervalCommit);
-			//record.maxStmtAdded   = calcMaxStmtAdded(moduleTarget, intervalCommit);
-			//record.avgStmtAdded   = calcAvgStmtAdded(moduleTarget, intervalCommit);
-			//record.stmtDeleted    = calcStmtDeleted(moduleTarget, intervalCommit);
-			//record.maxStmtDeleted = calcMaxStmtDeleted(moduleTarget, intervalCommit);
-			//record.avgStmtDeleted = calcAvgStmtDeleted(moduleTarget, intervalCommit);
-			//record.churn          = calcChurn(moduleTarget, intervalCommit);
-			//record.maxChurn       = calcMaxChurn(moduleTarget, intervalCommit);
-			//record.avgChurn       = calcAvgChurn(moduleTarget, intervalCommit);
-			//record.decl           = calcDecl(moduleTarget, intervalCommit);
-			//record.cond           = calcCond(moduleTarget, intervalCommit);
+	private static int calcDecl(Module module, String[] intervalCommit) {
+		int decl=0;
+		List<ChangeType> ctdecl= Arrays.asList(
+				ChangeType.METHOD_RENAMING,
+				ChangeType.PARAMETER_DELETE,
+				ChangeType.PARAMETER_INSERT,
+				ChangeType.PARAMETER_ORDERING_CHANGE,
+				ChangeType.PARAMETER_RENAMING,
+				ChangeType.PARAMETER_TYPE_CHANGE,
+				ChangeType.RETURN_TYPE_INSERT,
+				ChangeType.RETURN_TYPE_DELETE,
+				ChangeType.RETURN_TYPE_CHANGE,
+				ChangeType.PARAMETER_TYPE_CHANGE
+				);
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
+		for(int i=0;i<commitOnModules.size();i++) {
+			CommitOnModule commitOnModule = commitOnModules.get(i);
+			List<SourceCodeChange> changes = calcChanges(commitOnModule);
+			for(SourceCodeChange change : changes) {
+			    EntityType et = change.getChangedEntity().getType();
+		    	if(ctdecl.contains(change.getChangeType()))decl++;
+			}
 		}
+		return decl;
 	}
 
-	private static int calcPeriod(Module module, String[] intervalCommit) {
-		return 0;
+	private static double calcAvgChurn(Module module, String[] intervalCommit) {
+		int avgChurn=calcChurn(module, intervalCommit)/calcModuleHistories(module, intervalCommit);
+		return avgChurn;
+	}
+
+	private static int calcMaxChurn(Module module, String[] intervalCommit) {
+		int maxChurn=0;
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
+		for(int i=0;i<commitOnModules.size();i++) {
+			int churnTemp=0;
+			CommitOnModule commitOnModule = commitOnModules.get(i);
+			List<SourceCodeChange> changes = calcChanges(commitOnModule);
+			for(SourceCodeChange change : changes) {
+		    	if(change.getChangeType()==ChangeType.STATEMENT_INSERT)churnTemp++;
+		    	else if(change.getChangeType()==ChangeType.STATEMENT_DELETE)churnTemp--;
+			}
+			if(maxChurn<churnTemp)maxChurn=churnTemp;
+		}
+		return maxChurn;
+	}
+
+	private static int calcChurn(Module module, String[] intervalCommit) {
+		int churn=0;
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
+		for(int i=0;i<commitOnModules.size();i++) {
+			CommitOnModule commitOnModule = commitOnModules.get(i);
+			List<SourceCodeChange> changes = calcChanges(commitOnModule);
+			for(SourceCodeChange change : changes) {
+		    	if(change.getChangeType()==ChangeType.STATEMENT_INSERT)churn++;
+		    	else if(change.getChangeType()==ChangeType.STATEMENT_DELETE)churn--;
+			}
+		}
+		return churn;
+	}
+
+	private static double calcAvgStmtDeleted(Module module, String[] intervalCommit) {
+		int avgStmtDeleted=0;
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
+		for(int i=0;i<commitOnModules.size();i++) {
+			CommitOnModule commitOnModule = commitOnModules.get(i);
+			List<SourceCodeChange> changes = calcChanges(commitOnModule);
+			for(SourceCodeChange change : changes) {
+		    	if(change.getChangeType()==ChangeType.STATEMENT_DELETE)avgStmtDeleted++;
+			}
+		}
+		int moduleHistories=calcModuleHistories(module, intervalCommit);
+		return avgStmtDeleted/(double)moduleHistories;
+	}
+
+	private static int calcMaxStmtDeleted(Module module, String[] intervalCommit) {
+		int maxStmtDeleted=0;
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
+		for(int i=0;i<commitOnModules.size();i++) {
+			int stmtDeletedOnCommit=0;
+			CommitOnModule commitOnModule = commitOnModules.get(i);
+			List<SourceCodeChange> changes = calcChanges(commitOnModule);
+			for(SourceCodeChange change : changes) {
+		    	if(change.getChangeType()==ChangeType.STATEMENT_DELETE)stmtDeletedOnCommit++;
+			}
+			if(maxStmtDeleted<stmtDeletedOnCommit) {
+				maxStmtDeleted=stmtDeletedOnCommit;
+			}
+		}
+		return maxStmtDeleted;
+	}
+
+	private static int calcStmtDeleted(Module module, String[] intervalCommit) {
+		int stmtDeleted=0;
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
+		for(int i=0;i<commitOnModules.size();i++) {
+			CommitOnModule commitOnModule = commitOnModules.get(i);
+			List<SourceCodeChange> changes = calcChanges(commitOnModule);
+			for(SourceCodeChange change : changes) {
+		    	if(change.getChangeType()==ChangeType.STATEMENT_DELETE)stmtDeleted++;
+			}
+		}
+		return stmtDeleted;
+	}
+
+	private static double calcAvgStmtAdded(Module module, String[] intervalCommit) {
+		int avgStmtAdded=0;
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
+		for(int i=0;i<commitOnModules.size();i++) {
+			CommitOnModule commitOnModule = commitOnModules.get(i);
+			List<SourceCodeChange> changes = calcChanges(commitOnModule);
+			for(SourceCodeChange change : changes) {
+		    	if(change.getChangeType()==ChangeType.STATEMENT_INSERT)avgStmtAdded++;
+			}
+		}
+		int moduleHistories=calcModuleHistories(module, intervalCommit);
+		return avgStmtAdded/(double)moduleHistories;
+	}
+
+	private static int calcMaxStmtAdded(Module module, String[] intervalCommit) {
+		int maxStmtAdded=0;
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
+		for(int i=0;i<commitOnModules.size();i++) {
+			int stmtAddedTemp=0;
+			CommitOnModule commitOnModule = commitOnModules.get(i);
+			List<SourceCodeChange> changes = calcChanges(commitOnModule);
+			for(SourceCodeChange change : changes) {
+		    	if(change.getChangeType()==ChangeType.STATEMENT_INSERT)stmtAddedTemp++;
+			}
+			if(maxStmtAdded<stmtAddedTemp) {
+				maxStmtAdded=stmtAddedTemp;
+			}
+		}
+		return maxStmtAdded;
+	}
+
+	private static List<SourceCodeChange> calcChanges(CommitOnModule commitOnModule){
+		String idCommit = commitOnModule.id;
+		String pathNew  = commitOnModule.pathNew;
+		String pathOld  = commitOnModule.pathOld;
+		Modification modification = commitsAll.get(idCommit).modifications.stream().filter(item->item.pathNew.equals(pathNew)&item.pathOld.contentEquals(pathOld)).findFirst().get();
+		String sourcePrev =  null;
+		String sourceCurrent =null;
+		String strPre;
+		String strPost;
+		if(modification.sourceOld==null) {
+	        String tmp=modification.sourceNew;
+	        Pattern patternPre = Pattern.compile("[\\s\\S.]*?(?=\\{)");
+	        Matcher matcherPre = patternPre.matcher(tmp);
+	        if(matcherPre.find()) {
+			    strPre=matcherPre.group();
+	        }else {
+	        	strPre="";
+	        }
+		    Pattern patternPost = Pattern.compile("(?<=\\{)[\\s\\S.]*");
+		    Matcher matcherPost = patternPost.matcher(tmp);
+		    if(matcherPost.find()) {
+		    	strPost=matcherPost.group();
+		    }else {
+		    	strPost="}";
+		    }
+			sourcePrev= "public class Test{"+strPre+
+					"{"+
+					"token();\n"+
+					"token();\n"+
+					"token();\n"+
+					"token();\n"+
+					"token();\n"+
+					"token();\n"+
+			    	"token();\n"+
+					"token();\n"+
+					"token();\n"+
+					"token();\n"+
+					"}"+
+					"}";
+			sourceCurrent ="public class Test{"+strPre+
+					"{"+
+					"token();\n"+
+					"token();\n"+
+					"token();\n"+
+					"token();\n"+
+					"token();\n"+
+			        "token();\n"+
+					"token();\n"+
+					"token();\n"+
+					"token();\n"+
+					"token();\n"+
+					strPost+
+					"}";
+		}else {
+			sourcePrev= "public class Test{"+modification.sourceOld+"}";
+			sourceCurrent ="public class Test{"+modification.sourceNew+"}";
+		}
+
+		FileDistiller distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
+		try {
+		    distiller.extractClassifiedSourceCodeChanges(sourcePrev, sourceCurrent);
+		} catch(Exception e) {
+		    System.err.println("Warning: error while change distilling. " + e.getMessage());
+		}
+		return distiller.getSourceCodeChanges();
+	}
+
+	private static int calcStmtAdded(Module module, String[] intervalCommit) {
+		int stmtAdded=0;
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
+		for(int i=0;i<commitOnModules.size();i++) {
+			CommitOnModule commitOnModule = commitOnModules.get(i);
+			List<SourceCodeChange> changes = calcChanges(commitOnModule);
+			for(SourceCodeChange change : changes) {
+		    	if(change.getChangeType()==ChangeType.STATEMENT_INSERT)stmtAdded++;
+			}
+		}
+		return stmtAdded;
 	}
 
 	private static int calcElseDeleted(Module module, String[] intervalCommit) {
-		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
 		int elseDeleted=0;
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
 		for(int i=0;i<commitOnModules.size();i++) {
-			String idCommit = commitOnModules.get(i).id;
-			String pathNew = commitOnModules.get(i).pathNew;
-			String pathOld = commitOnModules.get(i).pathOld;
-			Modification modification = commitsAll.get(idCommit).modifications.stream().filter(item->item.pathNew.equals(pathNew)&item.pathOld.contentEquals(pathOld)).findFirst().get();
-			String sourceOld= "public class Test{"+modification.sourceOld+"}";
-			String sourceNew ="public class Test{"+modification.sourceNew+"}";
-
-			FileDistiller distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
-			try {
-			    distiller.extractClassifiedSourceCodeChanges(sourceOld, sourceNew);
-			} catch(Exception e) {
-			    System.err.println("Warning: error while change distilling. " + e.getMessage());
-			}
-
-			List<SourceCodeChange> changes = distiller.getSourceCodeChanges();
+			CommitOnModule commitOnModule = commitOnModules.get(i);
+			List<SourceCodeChange> changes = calcChanges(commitOnModule);
 			for(SourceCodeChange change : changes) {
 			    EntityType et = change.getChangedEntity().getType();
 		    	if(change.getChangeType()==ChangeType.ALTERNATIVE_PART_DELETE & et.toString().equals("ELSE_STATEMENT"))elseDeleted++;
@@ -305,24 +593,11 @@ public class Test {
 	}
 
 	private static int calcElseAdded(Module module, String[] intervalCommit) {
-		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
 		int elseAdded=0;
+		List<CommitOnModule> commitOnModules = calcCommitOnModulesInInterval(module, intervalCommit);
 		for(int i=0;i<commitOnModules.size();i++) {
-			String idCommit = commitOnModules.get(i).id;
-			String pathNew = commitOnModules.get(i).pathNew;
-			String pathOld = commitOnModules.get(i).pathOld;
-			Modification modification = commitsAll.get(idCommit).modifications.stream().filter(item->item.pathNew.equals(pathNew)&item.pathOld.contentEquals(pathOld)).findFirst().get();
-			String sourceOld= "public class Test{"+modification.sourceOld+"}";
-			String sourceNew ="public class Test{"+modification.sourceNew+"}";
-
-			FileDistiller distiller = ChangeDistiller.createFileDistiller(Language.JAVA);
-			try {
-			    distiller.extractClassifiedSourceCodeChanges(sourceOld, sourceNew);
-			} catch(Exception e) {
-			    System.err.println("Warning: error while change distilling. " + e.getMessage());
-			}
-
-			List<SourceCodeChange> changes = distiller.getSourceCodeChanges();
+			CommitOnModule commitOnModule = commitOnModules.get(i);
+			List<SourceCodeChange> changes = calcChanges(commitOnModule);
 			for(SourceCodeChange change : changes) {
 			    EntityType et = change.getChangedEntity().getType();
 			    if(change.getChangeType()==ChangeType.ALTERNATIVE_PART_INSERT & et.toString().equals("ELSE_STATEMENT") )elseAdded++;
@@ -331,57 +606,12 @@ public class Test {
 		return elseAdded;
 	}
 
-	private static double calcOwnership(Module module, String[] intervalCommit) {
-		Set<String> setAuthors = new HashSet<String>();
-		List<Commit> commits =calcCommitsInInterval(module, intervalCommit);
-		commits.stream().forEach(item->setAuthors.add(item.author));
-		List<String> authors = commits.stream().map(commit->commit.author).collect(Collectors.toList());
-		float ownership=0;
-		for(String author: setAuthors) {
-			int count = (int)authors.stream().filter(item->item.equals(author)).count();
-			if(ownership<count/(float)setAuthors.size()) {
-				ownership=count/(float)setAuthors.size();
-			}
-		}
-		return ownership;
-	}
-
-	private static int calcDevMinor(Module module, String[] intervalCommit) {
-		Set<String> setAuthors = new HashSet<String>();
-		List<Commit> commits =calcCommitsInInterval(module, intervalCommit);
-		commits.stream().forEach(item->setAuthors.add(item.author));
-		List<String> authors = commits.stream().map(commit->commit.author).collect(Collectors.toList());
-		int devMinor=0;
-		for(String author: setAuthors) {
-			int count = (int)authors.stream().filter(item->item.equals(author)).count();
-			if(count/(float)setAuthors.size()<0.20) {
-				devMinor++;
-			}
-		}
-		return devMinor;
-	}
-
-	private static int calcDevMajor(Module module, String[] intervalCommit) {
-		Set<String> setAuthors = new HashSet<String>();
-		List<Commit> commits =calcCommitsInInterval(module, intervalCommit);
-		commits.stream().forEach(item->setAuthors.add(item.author));
-		List<String> authors = commits.stream().map(commit->commit.author).collect(Collectors.toList());
-		int devMajor=0;
-		for(String author: setAuthors) {
-			int count = (int)authors.stream().filter(item->item.equals(author)).count();
-			if(0.20<count/(float)setAuthors.size()) {
-				devMajor++;
-			}
-		}
-		return devMajor;
-	}
-
 	private static int calcDevTotal(Module module, String[] intervalCommit) {
 		Set<String> setAuthors = new HashSet<String>();
 		List<Commit> commits =calcCommitsInInterval(module, intervalCommit);
 		commits.stream().forEach(item->setAuthors.add(item.author));
-		int devTotal=setAuthors.size();
-		return devTotal;
+		int authors=setAuthors.size();
+		return authors;
 	}
 
 	private static int calcModuleHistories(Module module, String[] intervalCommit) {
@@ -397,7 +627,7 @@ public class Test {
 		int dateEnd   = commitsAll.get(intervalCommit[1]).date;
 		for(String idCommit:module.idCommit2CommitOnModule.keySet()) {
 			Commit commit = commitsAll.get(idCommit);
-			if(dateBegin<commit.date & commit.date<dateEnd) {
+			if(dateBegin<=commit.date & commit.date<=dateEnd) {
 				commits.add(commit);
 			}
 		}
@@ -412,7 +642,7 @@ public class Test {
 		int dateEnd   = commitsAll.get(intervalCommit[1]).date;
 		for(String idCommit:module.idCommit2CommitOnModule.keySet()) {
 			Commit commit = commitsAll.get(idCommit);
-			if(dateBegin<commit.date & commit.date<dateEnd) {
+			if(dateBegin<=commit.date & commit.date<=dateEnd) {
 				commitOnModules.add(module.idCommit2CommitOnModule.get(idCommit));
 			}
 		}
@@ -420,12 +650,17 @@ public class Test {
 		return commitOnModules;
 	}
 
-	private static void calcHasBeenIntroduced() {
-	}
-
-	private static void calcHasBeenFixed() {
-	}
-
-	private static void calcIsBuggy(String path, String idCommit) {
+	private static int calcIsBuggy(Module module, String[] intervalCommit) {
+		HashMap<String, String[]> fix2induces = bugs.get(module.path);
+		if(fix2induces==null)return 0;
+		for(String idCommitFix: fix2induces.keySet()) {
+			for(String idCommitInduce: fix2induces.get(idCommitFix)) {
+				Commit commitFix = commitsAll.get(idCommitFix);
+				Commit commitInduce = commitsAll.get(idCommitInduce);
+				Commit commitTimePoint = commitsAll.get(intervalCommit[1]);
+				if(commitInduce.date<commitTimePoint.date & commitTimePoint.date<commitFix.date)return 1;
+			}
+		}
+		return 0;
 	}
 }
