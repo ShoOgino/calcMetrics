@@ -39,6 +39,7 @@ public class FileUtil {
                             .map(Path::toString)
                             .filter(p -> p.endsWith(ext))
                             .filter(p -> !p.contains(extIgnore))
+                            .map(p -> p.replace("\\", "/"))
                             .collect(Collectors.toList())
             );
         } catch (IOException e) {
@@ -46,6 +47,23 @@ public class FileUtil {
         }
         return pathsFile;
     }
+
+    public static List<String> findFiles(String dirRoot, String ext) {
+        List<String> pathsFile = new ArrayList<String>();
+        try {
+            pathsFile.addAll(
+                    Files.walk(Paths.get(dirRoot))
+                            .map(Path::toString)
+                            .filter(p -> p.endsWith(ext))
+                            .map(p -> p.replace("\\", "/"))
+                            .collect(Collectors.toList())
+            );
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return pathsFile;
+    }
+
 
     public static List<String> findFiles(String[] dirsRoot, String ext, String extIgnore) {
         List<String> pathsFile = new ArrayList<String>();
@@ -56,6 +74,7 @@ public class FileUtil {
                                 .map(Path::toString)
                                 .filter(p -> p.endsWith(ext))
                                 .filter(p -> !p.contains(extIgnore))
+                                .map(p -> p.replace("\\", "/"))
                                 .collect(Collectors.toList())
                 );
             }

@@ -5,7 +5,7 @@ import ch.uzh.ifi.seal.changedistiller.distilling.FileDistiller;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.ChangeType;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
-import visitor.*;
+import ast.*;
 import lombok.Data;
 import misc.DoubleConverter;
 import net.sf.jsefa.csv.annotation.CsvDataType;
@@ -23,8 +23,7 @@ import static util.FileUtil.readFile;
 @CsvDataType()
 @Data
 public class Module {
-	//recordID
-	String id="";
+	public String id="";
 	@CsvField(pos = 1)
 	public String path;
 
@@ -39,52 +38,54 @@ public class Module {
 	//independent variable
 	//code metrics
 	@CsvField(pos = 3)
-	int fanOut=0;
+	int fanIn=0;
 	@CsvField(pos = 4)
-	int parameters=0;
+	int fanOut=0;
 	@CsvField(pos = 5)
+	int parameters=0;
+	@CsvField(pos = 6)
 	int localVar=0;
-	@CsvField(pos = 6, converterType = DoubleConverter.class)
+	@CsvField(pos = 7, converterType = DoubleConverter.class)
 	double commentRatio=0;
-	@CsvField(pos = 7)
-	long countPath=0;
 	@CsvField(pos = 8)
-	int complexity=0;
+	long countPath=0;
 	@CsvField(pos = 9)
-	int execStmt=0;
+	int complexity=0;
 	@CsvField(pos = 10)
+	int execStmt=0;
+	@CsvField(pos = 11)
 	int maxNesting=0;
 
 	//process metrics
-	@CsvField(pos = 11)
-	int moduleHistories=0;
 	@CsvField(pos = 12)
-	int authors    = 0;
+	int moduleHistories=0;
 	@CsvField(pos = 13)
-	int stmtAdded=0;
+	int authors    = 0;
 	@CsvField(pos = 14)
+	int stmtAdded=0;
+	@CsvField(pos = 15)
 	int maxStmtAdded=0;
-	@CsvField(pos = 15, converterType = DoubleConverter.class)
+	@CsvField(pos = 16, converterType = DoubleConverter.class)
 	double avgStmtAdded=0;
-	@CsvField(pos = 16)
-	int stmtDeleted=0;
 	@CsvField(pos = 17)
+	int stmtDeleted=0;
+	@CsvField(pos = 18)
 	int maxStmtDeleted=0;
-	@CsvField(pos = 18, converterType = DoubleConverter.class)
+	@CsvField(pos = 19, converterType = DoubleConverter.class)
 	double avgStmtDeleted=0;
-	@CsvField(pos = 19)
-	int churn=0;
 	@CsvField(pos = 20)
+	int churn=0;
+	@CsvField(pos = 21)
 	int maxChurn=0;
-	@CsvField(pos = 21, converterType = DoubleConverter.class)
+	@CsvField(pos = 22, converterType = DoubleConverter.class)
 	double avgChurn=0;
-	@CsvField(pos = 22)
-	int decl=0;
 	@CsvField(pos = 23)
-	int cond=0;
+	int decl=0;
 	@CsvField(pos = 24)
-	int elseAdded=0;
+	int cond=0;
 	@CsvField(pos = 25)
+	int elseAdded=0;
+	@CsvField(pos = 26)
 	int elseDeleted=0;
 
 	public Module() {
@@ -93,6 +94,13 @@ public class Module {
 		this.commitsHead = new ArrayList<String>();
 		this.commitsRoot = new ArrayList<String>();
 	}
+	public Module(String path) {
+		this.path = path;
+		this.idCommit2CommitOnModule = new HashMap<>();
+		this.commitsHead = new ArrayList<String>();
+		this.commitsRoot = new ArrayList<String>();
+	}
+
 	public void calcMaxNesting(String pathRepository) {
 		CompilationUnit unit =getCompilationUnit(pathRepository);
 		VisitorMaxNesting visitorMaxNesting = new VisitorMaxNesting();
@@ -219,7 +227,7 @@ public class Module {
 	public  void calcAvgChurn(Commits commitsAll, String[] intervalCommit) {
 		calcChurn(commitsAll, intervalCommit);
 		calcModuleHistories(commitsAll, intervalCommit);
-		this.avgChurn= churn/moduleHistories;
+		this.avgChurn= churn/(float)moduleHistories;
 	}
 
 	public  void calcMaxChurn(Commits commitsAll, String[] intervalCommit) {
@@ -389,7 +397,7 @@ public class Module {
 		int dateEnd   = commitsAll.get(intervalCommit[1]).date;
 		for(String idCommit:idCommit2CommitOnModule.keySet()) {
 			Commit commit = commitsAll.get(idCommit);
-			if(dateBegin<=commit.date & commit.date<=dateEnd) {
+			if(dateBegin<=commit.date & commit.date<=dateEnd & !commit.isMerge) {
 				commits.add(commit);
 			}
 		}
@@ -404,7 +412,7 @@ public class Module {
 		int dateEnd   = commitsAll.get(intervalCommit[1]).date;
 		for(String idCommit : idCommit2CommitOnModule.keySet()) {
 			Commit commit = commitsAll.get(idCommit);
-			if(dateBegin<=commit.date & commit.date<=dateEnd) {
+			if(dateBegin<=commit.date & commit.date<=dateEnd & !commit.isMerge) {
 				commitOnModules.add( idCommit2CommitOnModule.get(idCommit));
 			}
 		}
@@ -442,55 +450,76 @@ public class Module {
 		Modification modification = commitsAll.get(idCommit).modifications.stream().filter(item->item.pathNew.equals(pathNew)&item.pathOld.contentEquals(pathOld)).findFirst().get();
 		String sourcePrev =  null;
 		String sourceCurrent =null;
-		String strPre;
-		String strPost;
+		String strPre = null;
+		String strPost = null;
 		if(modification.sourceOld==null) {
+			String regex  = "\\n|\\r\\n";
 			String tmp=modification.sourceNew;
+			String[] lines = tmp.split(regex, 0);
+
+			boolean inComment=false;
+			int count=0;
+			for(String line : lines) {
+				if(line.matches(".*/\\*.*")) {
+					inComment=true;
+					count++;
+				}else if(line.matches(".*\\*/.*")) {
+					inComment=false;
+					count++;
+				}else if(inComment) {
+					count++;
+				}else if(line.matches(".*//.*")) {
+					count++;
+				}else{
+					break;
+				}
+			}
+			tmp="";
+			for(int i=count;i<lines.length;i++){
+				tmp=tmp+lines[i]+"\n";
+			}
+
 			Pattern patternPre = Pattern.compile("[\\s\\S.]*?(?=\\{)");
 			Matcher matcherPre = patternPre.matcher(tmp);
 			if(matcherPre.find()) {
 				strPre=matcherPre.group();
-			}else {
-				strPre="";
 			}
 			Pattern patternPost = Pattern.compile("(?<=\\{)[\\s\\S.]*");
 			Matcher matcherPost = patternPost.matcher(tmp);
 			if(matcherPost.find()) {
 				strPost=matcherPost.group();
-			}else {
-				strPost="}";
 			}
 			sourcePrev= "public class Test{"+strPre+
 					"{"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
 					"}"+
 					"}";
 			sourceCurrent ="public class Test{"+strPre+
 					"{"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
-					"token();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
+					"dummy();\n"+
 					strPost+
 					"}";
 		}else {
-			sourcePrev= "public class Test{"+modification.sourceOld+"}";
-			sourceCurrent ="public class Test{"+modification.sourceNew+"}";
+			sourcePrev= "public class Dummy{"+modification.sourceOld+"}";
+			sourceCurrent ="public class Dummy{"+modification.sourceNew+"}";
 		}
 
 		FileDistiller distiller = ChangeDistiller.createFileDistiller(ChangeDistiller.Language.JAVA);

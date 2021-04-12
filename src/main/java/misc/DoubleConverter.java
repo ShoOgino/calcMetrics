@@ -1,4 +1,4 @@
-package misc;
+package main.java.misc;
 
 public class DoubleConverter implements net.sf.jsefa.common.converter.SimpleTypeConverter {
 

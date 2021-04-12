@@ -1,17 +1,17 @@
-package visitor;
+package ast;
 
-import org.eclipse.jdt.core.dom.ASTVisitor;
-import org.eclipse.jdt.core.dom.EnhancedForStatement;
-import org.eclipse.jdt.core.dom.ForStatement;
-import org.eclipse.jdt.core.dom.IfStatement;
-import org.eclipse.jdt.core.dom.SwitchStatement;
-import org.eclipse.jdt.core.dom.WhileStatement;
+import org.eclipse.jdt.core.dom.*;
 
 public class VisitorComplexity extends ASTVisitor {
-	public int complexity=0;
+	public int complexity=1;
 
 	public boolean visit(IfStatement node) {
 	    complexity++;
+	    if(node.getElseStatement()!=null){
+		    if(node.getElseStatement().getNodeType() != Statement.IF_STATEMENT){
+		    	complexity++;
+			}
+		}
 	    return true;
     }
 	public boolean visit(ForStatement node) {

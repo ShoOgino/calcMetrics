@@ -1,28 +1,51 @@
+package main.java;
+
 import data.*;
+import data.Bugs;
+import data.Commits;
+import data.ModulesAll;
+import data.ModulesTarget;
+import main.java.misc.ArgBean;
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.CmdLineParser;
 
 public class Main {
-	private static String   pathProject   = "C:/Users/ShoOgino/data/1_task/20200421_094917/projects/MLTool/datasets/egit";
-	private static String[] commitEdges = {"e47f0c1c1390a956f5f8b19e62bb933c614492fc", "1241472396d11fe0e7b31c6faf82d04d39f965a6"};
-
-	private static String pathRepository = pathProject+"/repository";
-	private static String pathDataset = pathProject+"/datasets/"+ commitEdges[0].substring(0,8)+"_"+ commitEdges[1].substring(0,8)+".csv";
-	private static String pathModules = pathProject+"/modules.json";
-	private static String pathCommits = pathProject+"/commits";
-	private static String pathBugs = pathProject+"/bugs.json";
-
-	private static Commits commitsAll = new Commits();
-	private static ModulesAll modulesAll = new ModulesAll();
-	private static Bugs bugsAll = new Bugs();
-
 	public static void main(String[] args){
+		ArgBean bean = new ArgBean();
+		CmdLineParser parser = new CmdLineParser(bean);
+		try {
+			parser.parseArgument(args);
+		} catch (CmdLineException e) {
+			System.out.println("usage:");
+			parser.printSingleLineUsage(System.out);
+			System.out.println();
+			parser.printUsage(System.out);
+			return;
+		}
+
+		final String pathProject = bean.pathProject;
+		final String[] commitEdgesMethod = bean.commitEdgesMethod;
+		final String[] commitEdgesFile = bean.commitEdgesFile;
+
+		String pathRepositoryMethod = pathProject+"/repositoryMethod";
+		String pathRepositoryFile = pathProject+"/repositoryFile";
+		String pathDataset = pathProject+"/datasets/"+ commitEdgesMethod[0].substring(0,8)+"_"+ commitEdgesMethod[1].substring(0,8)+".csv";
+		String pathModules = pathProject+"/modules.json";
+		String pathCommits = pathProject+"/commits";
+		String pathBugs = pathProject+"/bugs.json";
+
+		Commits commitsAll = new Commits();
+		ModulesAll modulesAll = new ModulesAll();
+		Bugs bugsAll = new Bugs();
+
 		try {
 			commitsAll.loadCommits(pathCommits);
 			modulesAll.loadModules(pathModules);
 			bugsAll.loadBugs(pathBugs);
 			ModulesTarget modulesTarget = new ModulesTarget();
-			modulesTarget.identifyTargetModules(pathRepository, commitEdges);
-		    modulesTarget.calcCodeMetrics(modulesAll, pathRepository, commitEdges);
-		    modulesTarget.calcProcessMetrics(modulesAll, commitsAll, bugsAll, commitEdges);
+			modulesTarget.identifyTargetModules(modulesAll, pathRepositoryMethod, commitEdgesMethod);
+			modulesTarget.calcCodeMetrics(pathRepositoryFile, commitEdgesFile, pathRepositoryMethod, commitEdgesMethod);
+			modulesTarget.calcProcessMetrics(commitsAll, bugsAll, commitEdgesMethod);
     	    modulesTarget.saveMetricsAsRecords(pathDataset);
 		}catch(Exception e) {
 			e.printStackTrace();

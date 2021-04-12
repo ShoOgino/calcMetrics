@@ -1,4 +1,4 @@
-package visitor;
+package ast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +58,7 @@ public class VisitorCountPath  extends ASTVisitor{
 
 	public boolean visit(SwitchStatement node) {
 		int pathSwitch=0;
-		List<Statement> statements= node.statements();
+		List<Statement> statements = node.statements();
 		for(int i=0; i<statements.size();i++) {
 			if(statements.get(i).getNodeType()==ASTNode.SWITCH_CASE) {
 				int pathSwitchCase=1;
@@ -77,6 +77,8 @@ public class VisitorCountPath  extends ASTVisitor{
 		branches.add(pathSwitch);
 		return false;
 	}
+
+
 	//purpose: skip anonymous class.
 	public boolean visit(AnonymousClassDeclaration classDeclarationStatement) {
 		return false;

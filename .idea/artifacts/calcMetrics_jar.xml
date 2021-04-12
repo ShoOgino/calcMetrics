@@ -1,0 +1,44 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="calcMetrics:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/calcMetrics_jar</output-path>
+    <root id="archive" name="calcMetrics.jar">
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="$PROJECT_DIR$/src/META-INF/MANIFEST.MF" />
+      </element>
+      <element id="module-output" name="calcMetrics" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.resources/3.7.100/org.eclipse.core.resources-3.7.100.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.filesystem/1.3.100/org.eclipse.core.filesystem-1.3.100.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.runtime/3.7.0/org.eclipse.core.runtime-3.7.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-annotations/2.9.0/jackson-annotations-2.9.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.jobs/3.5.100/org.eclipse.core.jobs-3.5.100.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/aopalliance/aopalliance/1.0/aopalliance-1.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.registry/3.5.101/org.eclipse.equinox.registry-3.5.101.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/googlecode/javaewah/JavaEWAH/1.1.7/JavaEWAH-1.1.7.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.preferences/3.4.1/org.eclipse.equinox.preferences-3.4.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/commons/commons-lang3/3.1/commons-lang3-3.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.expressions/3.4.300/org.eclipse.core.expressions-3.4.300.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.contenttype/3.4.100/org.eclipse.core.contenttype-3.4.100.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/text/org.eclipse.text/3.5.101/org.eclipse.text-3.5.101.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/changedistiller-0.0.1-SNAPSHOT.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/jdt/org.eclipse.jdt.core/3.7.1/org.eclipse.jdt.core-3.7.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.common/3.6.0/org.eclipse.equinox.common-3.6.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/jgit/org.eclipse.jgit/5.8.1.202007141445-r/org.eclipse.jgit-5.8.1.202007141445-r.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/google/inject/extensions/guice-assistedinject/3.0/guice-assistedinject-3.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.app/1.3.100/org.eclipse.equinox.app-1.3.100.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/slf4j/slf4j-jdk14/1.7.25/slf4j-jdk14-1.7.25.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/google/inject/guice/3.0/guice-3.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/net/sf/jsefa/jsefa/1.1.0.RELEASE/jsefa-1.1.0.RELEASE.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/me/tongfei/progressbar/0.9.1/progressbar-0.9.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/osgi/org.eclipse.osgi/3.7.1/org.eclipse.osgi-3.7.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.20/lombok-1.18.20.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/jline/jline/3.19.0/jline-3.19.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/xmlpull/xmlpull/1.1.2.1/xmlpull-1.1.2.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.commands/3.6.0/org.eclipse.core.commands-3.6.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/javax/inject/javax.inject/1/javax.inject-1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-core/2.9.7/jackson-core-2.9.7.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-databind/2.9.7/jackson-databind-2.9.7.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/args4j/args4j/2.33/args4j-2.33.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
