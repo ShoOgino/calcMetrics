@@ -1,6 +1,6 @@
-package ast;
+package main.java.ast;
 
-import data.Module;
+import main.java.data.Module;
 import org.eclipse.jdt.core.dom.*;
 
 import java.io.File;
@@ -26,17 +26,23 @@ public class VisitorFanIn extends ASTVisitor {
 
     @Override
     public boolean visit(MethodDeclaration node) {
-        if(node.getBody()==null
-                |node.resolveBinding()==null) {
+        if(node.getBody()==null | node.resolveBinding()==null) {
             return false;
         }
         pathMethod = calculatePathMethod(node);
-        if(pathMethod.contains("test")){//テストコードは対象外
+        if(pathMethod==null){
+            System.out.println(pathMethod);
+            return super.visit(node);
+        }
+        if(pathMethod.contains("test")|pathMethod.contains("Test")){//テストコードは対象外
             return super.visit(node);
         }
         //System.out.println(pathMethod);
         Module module=modules.get(pathMethod);
-        module.id=calculateIDMethod(node);
+        if(module==null){
+        }else {
+            module.id = calculateIDMethod(node);
+        }
         return super.visit(node);
     }
 
@@ -111,12 +117,15 @@ public class VisitorFanIn extends ASTVisitor {
     }
 
     public String calculatePathMethod(MethodDeclaration node) {
+        if(node.getParent().getNodeType()!=ASTNode.TYPE_DECLARATION
+        & node.getParent().getNodeType()!=ASTNode.ENUM_DECLARATION){
+            return null;
+        }
         String pathMethod="";
-
-        File file = new File(pathFile);
-        String regex = "(?<=repositoryFile\\\\).+";
+        File file = new File(pathFile.replace("\\", "/"));
+        String regex = "(?<=repositoryFile/).+";
         Pattern p = Pattern.compile(regex);
-        String parent = file.getParent();
+        String parent = file.getParent().replace("\\", "/");
         Matcher m = p.matcher(parent);
         String dirFile = null;
         if(m.find()) {
@@ -156,7 +165,7 @@ public class VisitorFanIn extends ASTVisitor {
         String nameMethod = new MethodNameGenerator(node).generate();
 
         pathMethod=dirFile+"/"+classMethod+"#"+nameMethod+".mjava";
-        pathMethod=pathMethod.replaceAll("\\\\", "/");
+        pathMethod=pathMethod.replace("\\", "/");
         return pathMethod;
     }
 

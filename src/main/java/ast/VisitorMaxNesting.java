@@ -1,18 +1,9 @@
-package ast;
+package main.java.ast;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTVisitor;
-import org.eclipse.jdt.core.dom.CatchClause;
-import org.eclipse.jdt.core.dom.EnhancedForStatement;
-import org.eclipse.jdt.core.dom.ForStatement;
-import org.eclipse.jdt.core.dom.IfStatement;
-import org.eclipse.jdt.core.dom.Statement;
-import org.eclipse.jdt.core.dom.SwitchStatement;
-import org.eclipse.jdt.core.dom.TryStatement;
-import org.eclipse.jdt.core.dom.WhileStatement;
+import org.eclipse.jdt.core.dom.*;
 
 public class VisitorMaxNesting extends ASTVisitor {
 	public int maxNesting=0;
@@ -99,6 +90,10 @@ public class VisitorMaxNesting extends ASTVisitor {
 	    		maxNesting=visitor.maxNesting+1;
 	    	}
 		}
+		return false;
+	}
+	//purpose: skip anonymous class.
+	public boolean visit(AnonymousClassDeclaration classDeclarationStatement) {
 		return false;
 	}
 

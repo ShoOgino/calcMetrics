@@ -1,8 +1,15 @@
 package data;
 
-import jdk.nashorn.internal.ir.annotations.Ignore;
+import main.java.data.Bugs;
+import main.java.data.Commits;
+import main.java.data.ModulesAll;
+import main.java.data.Module;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TestModule {
@@ -22,7 +29,9 @@ public class TestModule {
     private static Bugs bugsAll = new Bugs();
 
     @BeforeAll
-    static public void setUp() {
+    static public void setUp() throws GitAPIException, IOException {
+        util.RepositoryUtil.checkoutRepository(pathRepositoryFile, commitEdgesFile[1]);
+        util.RepositoryUtil.checkoutRepository(pathRepositoryMethod, commitEdgesMethod[1]);
         modulesAll.loadModules(pathModules);
         commitsAll.loadCommits(pathCommits);
     }
@@ -31,136 +40,202 @@ public class TestModule {
     public void testCalcFanOut1(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/tree/command/FetchConfiguredRemoteCommand#execute(ExecutionEvent).mjava");
         module.calcFanOut(pathRepositoryMethod);
-        assertEquals(10, module.fanOut);
+        assertEquals(10, module.getFanOut());
     }
 
     @Test
     public void testCalcFanOut2(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/dialogs/CommitMessageComponentStateManager#persistState(Repository,CommitMessageComponentState).mjava");
         module.calcFanOut(pathRepositoryMethod);
-        assertEquals(12, module.fanOut);
+        assertEquals(12, module.getFanOut());
     }
 
     @Test
     public void testCalcFanOut3(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/actions/SynchronizeWithActionHandler#execute(ExecutionEvent).mjava");
         module.calcFanOut(pathRepositoryMethod);
-        assertEquals(15, module.fanOut);
+        assertEquals(15, module.getFanOut());
+    }
+    @Test
+    public void testCalcFanOut4(){
+        Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/CachedCheckboxTreeViewer#updateCheckState(Object,boolean).mjava");
+        module.calcFanOut(pathRepositoryMethod);
+        assertEquals(11, module.getFanOut());
+    }
+    @Test
+    public void testCalcFanOut5(){
+        Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/tree/BranchHierarchyNode#getPathList().mjava");
+        module.calcFanOut(pathRepositoryMethod);
+        assertEquals(12, module.getFanOut());
     }
 
     @Test
     public void testCalcLocalVar1(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/push/SimpleConfigurePushDialog#createDialogArea(Composite).mjava");
         module.calcLocalVar(pathRepositoryMethod);
-        assertEquals(35, module.localVar);
+        assertEquals(35, module.getLocalVar());
     }
     @Test
     public void testCalcLocalVar2(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/RepositoriesViewLabelProvider#decorateImage(Image,Object).mjava");
         module.calcLocalVar(pathRepositoryMethod);
-        assertEquals(12, module.localVar);
+        assertEquals(12, module.getLocalVar());
     }
     @Test
     public void testCalcLocalVar3(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/history/GitHistoryPage#buildFilterPaths(IResource[],File[],Repository).mjava");
         module.calcLocalVar(pathRepositoryMethod);
-        assertEquals(10, module.localVar);
+        assertEquals(10, module.getLocalVar());
     }
+    @Test
+    public void testCalcLocalVar4(){
+        Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/dialogs/CompareTreeView#reactOnOpen(OpenEvent).mjava");
+        module.calcLocalVar(pathRepositoryMethod);
+        assertEquals(17, module.getLocalVar());
+    }
+    @Test
+    public void testCalcLocalVar5(){
+        Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/commands/shared/AbstractSharedCommandHandler#getRepository(ExecutionEvent).mjava");
+        module.calcLocalVar(pathRepositoryMethod);
+        assertEquals(10, module.getLocalVar());
+    }
+
+
     @Test
     public void testCalcCommentRatio1(){
         Module module = new Module("org.eclipse.egit.core/src/org/eclipse/egit/core/ContainerTreeIterator#ContainerTreeIterator(Repository,IWorkspaceRoot).mjava");
         module.calcCommentRatio(pathRepositoryMethod);
-        assertEquals(String.format("%.5f", 0.684210538864135), String.format("%.5f", module.commentRatio));
+        assertEquals(String.format("%.5f", 0.684210538864135), String.format("%.5f", module.getCommentRatio()));
     }
     @Test
     public void testCalcCommentRatio2(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/decorators/DecoratableResourceHelper#createThreeWayTreeWalk(RepositoryMapping,ArrayList[String]).mjava");
         module.calcCommentRatio(pathRepositoryMethod);
-        assertEquals(String.format("%.5f",0.161290317773818), String.format("%.5f",module.commentRatio));
+        assertEquals(String.format("%.5f",0.161290317773818), String.format("%.5f",module.getCommentRatio()));
+    }
+
+    @Test
+    public void testCalcCommentRatio3(){
+        Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/RepositoriesViewLabelProvider#getSimpleText(RepositoryTreeNode).mjava");
+        module.calcCommentRatio(pathRepositoryMethod);
+        assertEquals(String.format("%.5f",0.0933333333), String.format("%.5f",module.getCommentRatio()));
+    }
+    @Test
+    public void testCalcCommentRatio4(){
+        Module module = new Module("org.eclipse.egit.core/src/org/eclipse/egit/core/op/ResetOperation#execute(IProgressMonitor).mjava");
+        module.calcCommentRatio(pathRepositoryMethod);
+        assertEquals(String.format("%.5f",0.19047619), String.format("%.5f",module.getCommentRatio()));
     }
 
     @Test
     public void testCalcCountPath1(){
         Module module = new Module("org.eclipse.egit.core/src/org/eclipse/egit/core/ContainerTreeIterator#isEntryIgnoredByTeamProvider(IResource).mjava");
         module.calcCountPath(pathRepositoryMethod);
-        assertEquals(4, module.countPath);
+        assertEquals(4, module.getCountPath());
     }
 
     @Test
     public void testCalcCountPath2(){
         Module module = new Module("org.eclipse.egit.core/src/org/eclipse/egit/core/synchronize/GitSyncInfo#calculateKindImpl(Repository,TreeWalk,int,int).mjava");
         module.calcCountPath(pathRepositoryMethod);
-        assertEquals(16, module.countPath);
+        assertEquals(16, module.getCountPath());
     }
 
     @Test
     public void testCalcCountPath3(){
         Module module = new Module("org.eclipse.egit.core/src/org/eclipse/egit/core/synchronize/dto/GitSynchronizeData#updateRevs().mjava");
         module.calcCountPath(pathRepositoryMethod);
-        assertEquals(8, module.countPath);
+        assertEquals(8, module.getCountPath());
     }
     @Test
     public void testCalcCountPath4(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/RepositoriesViewLabelProvider#decorateImage(Image,Object).mjava");
         module.calcCountPath(pathRepositoryMethod);
-        assertEquals(109, module.countPath);
+        assertEquals(109, module.getCountPath());
     }
-
+    @Test
+    public void testCalcCountPath5(){
+        Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/tree/command/ShowInHistoryCommand#execute(ExecutionEvent).mjava");
+        module.calcCountPath(pathRepositoryMethod);
+        assertEquals(51, module.getCountPath());
+    }
     @Test
     public void testCalcComplexity1(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/dialogs/CommitDialog#getFileStatus(String,IndexDiff).mjava");
         module.calcComplexity(pathRepositoryMethod);
-        assertEquals(14, module.complexity);
+        assertEquals(14, module.getComplexity());
     }
     @Test
     public void testCalcComplexity2(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/history/FileDiff#compute(TreeWalk,RevCommit).mjava");
         module.calcComplexity(pathRepositoryMethod);
-        assertEquals(13, module.complexity);
+        assertEquals(13, module.getComplexity());
     }
     @Test
     public void testCalcComplexity3(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/tree/command/RepositoriesViewCommandHandler#enableWorkingDirCommand(Object).mjava");
         module.calcComplexity(pathRepositoryMethod);
-        assertEquals(13, module.complexity);
+        assertEquals(13, module.getComplexity());
     }
-
+    @Test
+    public void testCalcComplexity4(){
+        Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/actions/RepositoryActionHandler#convertSelection(IEvaluationContext,Object).mjava");
+        module.calcComplexity(pathRepositoryMethod);
+        assertEquals(11, module.getComplexity());
+    }
+    @Test
+    public void testCalcComplexity5(){
+        Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/decorators/DecoratableResourceAdapter.RecursiveStateFilter#shouldRecurse(TreeWalk).mjava");
+        module.calcComplexity(pathRepositoryMethod);
+        assertEquals(9, module.getComplexity());
+    }
     @Test
     public void testCalcExecStmt1(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/commit/CommitUI#getSelectedFiles().mjava");
         module.calcExecStmt(pathRepositoryMethod);
-        assertEquals(10, module.execStmt);
+        assertEquals(10, module.getExecStmt());
     }
     @Test
     public void testCalcExecStmt2(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/CompareUtils#getAdapter(Object,Class,boolean).mjava");
         module.calcExecStmt(pathRepositoryMethod);
-        assertEquals(11, module.execStmt);
+        assertEquals(11, module.getExecStmt());
     }
     @Test
     public void testCalcExecStmt3(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/actions/CompareWithIndexActionHandler#execute(ExecutionEvent).mjava");
         module.calcExecStmt(pathRepositoryMethod);
-        assertEquals(13, module.execStmt);
+        assertEquals(13, module.getExecStmt());
     }
-
     @Test
     public void testCalcMaxNesting1(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/RepositoriesViewLabelProvider#decorateImage(Image,Object).mjava");
         module.calcMaxNesting(pathRepositoryMethod);
-        assertEquals(8, module.maxNesting);
+        assertEquals(8, module.getMaxNesting());
     }
     @Test
     public void testCalcMaxNesting2(){
         Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/clone/GitSelectWizardPage#createControl(Composite).mjava");
         module.calcMaxNesting(pathRepositoryMethod);
-        assertEquals(7, module.maxNesting);
+        assertEquals(7, module.getMaxNesting());
     }
     @Test
     public void testCalcMaxNesting3(){
         Module module = new Module("org.eclipse.egit.core/src/org/eclipse/egit/core/project/RepositoryMapping#getGitDirAbsolutePath().mjava");
         module.calcMaxNesting(pathRepositoryMethod);
-        assertEquals(1, module.maxNesting);
+        assertEquals(1, module.getMaxNesting());
+    }
+    @Test
+    public void testCalcMaxNesting4(){
+        Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/sharing/SharingWizard#performFinish().mjava");
+        module.calcMaxNesting(pathRepositoryMethod);
+        assertEquals(3, module.getMaxNesting());
+    }
+    @Test
+    public void testCalcMaxNesting5(){
+        Module module = new Module("org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/clone/GitCreateGeneralProjectPage#checkPage().mjava");
+        module.calcMaxNesting(pathRepositoryMethod);
+        assertEquals(3, module.getMaxNesting());
     }
 
     @Test
@@ -168,42 +243,71 @@ public class TestModule {
         String pathModule="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/dialogs/CommitDialog#okPressed().mjava";
         Module module = modulesAll.get(pathModule);
         module.calcModuleHistories(commitsAll, commitEdgesMethod);
-        assertEquals(10, module.moduleHistories);
+        assertEquals(10, module.getModuleHistories());
     }
     @Test
     public void testCalcModuleHistories2(){
         String pathModule ="org.eclipse.egit.core/src/org/eclipse/egit/core/project/RepositoryMapping#getGitDirAbsolutePath().mjava";
         Module module = modulesAll.get(pathModule);
         module.calcModuleHistories(commitsAll, commitEdgesMethod);
-        assertEquals(3, module.moduleHistories);
+        assertEquals(3, module.getModuleHistories());
     }
     @Test
     public void testCalcModuleHistories3(){
         String pathModule = "org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/actions/MergeActionHandler#execute(ExecutionEvent).mjava";
         Module module = modulesAll.get(pathModule);
         module.calcModuleHistories(commitsAll, commitEdgesMethod);
-        assertEquals(8, module.moduleHistories);
+        assertEquals(8, module.getModuleHistories());
     }
+    @Test
+    public void testCalcModuleHistories4(){
+        String pathModule = "org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/history/GitHistoryPage#initActions().mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcModuleHistories(commitsAll, commitEdgesMethod);
+        assertEquals(11, module.getModuleHistories());
+    }
+    @Test
+    public void testCalcModuleHistories5(){
+        String pathModule = "org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/tree/RepositoryTreeNode#hashCode().mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcModuleHistories(commitsAll, commitEdgesMethod);
+        assertEquals(10, module.getModuleHistories());
+    }
+
 
     @Test
     public void testCalcAuthors1(){
         String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/dialogs/CommitDialog#okPressed().mjava";
         Module module = modulesAll.get(pathModule);
         module.calcDevTotal(commitsAll, commitEdgesMethod);
-        assertEquals(6, module.authors);
+        assertEquals(6, module.getAuthors());
     }
     @Test
     public void testCalcAuthors2(){
         String pathModule ="org.eclipse.egit.core/src/org/eclipse/egit/core/project/RepositoryMapping#getGitDirAbsolutePath().mjava";
         Module module = modulesAll.get(pathModule);
         module.calcDevTotal(commitsAll, commitEdgesMethod);
-        assertEquals(3, module.authors);
+        assertEquals(3, module.getAuthors());
     }
     @Test
     public void testCalcAuthors3(){
         String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/actions/MergeActionHandler#execute(ExecutionEvent).mjava";
         Module module = modulesAll.get(pathModule);
         module.calcDevTotal(commitsAll, commitEdgesMethod);
-        assertEquals(4, module.authors);
+        assertEquals(4, module.getAuthors());
+    }
+    @Test
+    public void testCalcAuthors4(){
+        String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/history/GitHistoryPage#initActions().mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcDevTotal(commitsAll, commitEdgesMethod);
+        assertEquals(4, module.getAuthors());
+    }
+    @Test
+    public void testCalcAuthors5(){
+        String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/tree/RepositoryTreeNode#hashCode().mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcDevTotal(commitsAll, commitEdgesMethod);
+        assertEquals(3, module.getAuthors());
     }
 }

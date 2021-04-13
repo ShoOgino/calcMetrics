@@ -1,10 +1,10 @@
 package main.java;
 
-import data.*;
-import data.Bugs;
-import data.Commits;
-import data.ModulesAll;
-import data.ModulesTarget;
+import main.java.data.*;
+import main.java.data.Bugs;
+import main.java.data.Commits;
+import main.java.data.ModulesAll;
+import main.java.data.ModulesTarget;
 import main.java.misc.ArgBean;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;

@@ -10,7 +10,6 @@ import java.io.IOException;
 public class RepositoryUtil {
     public static void checkoutRepository(String pathRepository, String idCommit) throws IOException, RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, GitAPIException {
         //repositoryについて、そのコミットidへcheckout。
-        //lockファイルを削除
         System.out.println("chackout at "+idCommit+"...");
         Git git = Git.open(new File(pathRepository));
         git.reset().setMode(ResetCommand.ResetType.HARD).call();

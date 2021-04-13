@@ -1,4 +1,4 @@
-package data;
+package main.java.data;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-import static util.FileUtil.readFile;
+import static main.java.util.FileUtil.readFile;
 
 public class Commits {
     private HashMap<String, Commit> commits = new HashMap<String, Commit>();

@@ -1,4 +1,4 @@
-package data;
+package main.java.data;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -8,7 +8,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.HashMap;
 
-import static util.FileUtil.readFile;
+import main.java.util.FileUtil.*;
+
+import static main.java.util.FileUtil.readFile;
 
 public class ModulesAll {
     HashMap<String, Module> modules = new HashMap<String, Module>();

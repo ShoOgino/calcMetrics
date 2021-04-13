@@ -1,13 +1,13 @@
-package data;
+package main.java.data;
 
 import ch.uzh.ifi.seal.changedistiller.ChangeDistiller;
 import ch.uzh.ifi.seal.changedistiller.distilling.FileDistiller;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.ChangeType;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
-import ast.*;
+import main.java.ast.*;
 import lombok.Data;
-import misc.DoubleConverter;
+import main.java.misc.DoubleConverter;
 import net.sf.jsefa.csv.annotation.CsvDataType;
 import net.sf.jsefa.csv.annotation.CsvField;
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -19,7 +19,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static util.FileUtil.readFile;
+import static main.java.util.FileUtil.readFile;
 @CsvDataType()
 @Data
 public class Module {
@@ -522,7 +522,7 @@ public class Module {
 			sourceCurrent ="public class Dummy{"+modification.sourceNew+"}";
 		}
 
-		FileDistiller distiller = ChangeDistiller.createFileDistiller(ChangeDistiller.Language.JAVA);
+		FileDistiller distiller = ChangeDistiller.createFileDistiller();
 		try {
 			distiller.extractClassifiedSourceCodeChanges(sourcePrev, sourceCurrent);
 		} catch(Exception e) {

@@ -1,8 +1,8 @@
-package data;
+package main.java.data;
 
-import ast.RequestorFanIn;
+import main.java.ast.RequestorFanIn;
 import me.tongfei.progressbar.ProgressBar;
-import misc.DoubleConverter;
+import main.java.misc.DoubleConverter;
 import net.sf.jsefa.Serializer;
 import net.sf.jsefa.csv.CsvIOFactory;
 import net.sf.jsefa.csv.config.CsvConfiguration;
@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static util.FileUtil.findFiles;
+import static main.java.util.FileUtil.findFiles;
 import static util.RepositoryUtil.checkoutRepository;
 
 public class ModulesTarget {
@@ -29,7 +29,7 @@ public class ModulesTarget {
         List<String> pathSources = findFiles(pathRepository, ".mjava", "test");
         for(String pathSource: ProgressBar.wrap(pathSources, "identifyTargetModules")) {
             pathSource=pathSource.replace("\\", "/");
-            String prefix = pathRepository+"/";
+            String prefix = pathRepository.replace("\\", "/")+"/";
             int index = pathSource.indexOf(prefix);
             String pathModule = pathSource.substring(index+prefix.length());
             Module module = new Module();

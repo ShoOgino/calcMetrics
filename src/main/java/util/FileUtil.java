@@ -1,11 +1,11 @@
-package util;
+package main.java.util;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import data.Commit;
-import data.Module;
+import main.java.data.Commit;
+import main.java.data.Module;
 import me.tongfei.progressbar.ProgressBar;
 
 import java.io.File;

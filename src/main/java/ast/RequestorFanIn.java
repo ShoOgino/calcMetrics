@@ -1,6 +1,6 @@
-package ast;
+package main.java.ast;
 
-import data.Module;
+import main.java.data.Module;
 import org.eclipse.jdt.core.dom.*;
 
 import java.util.ArrayList;

@@ -1,4 +1,4 @@
-package ast;
+package main.java.ast;
 
 import java.util.Arrays;
 import java.util.List;

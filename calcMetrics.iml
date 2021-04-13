@@ -51,7 +51,7 @@
     <orderEntry type="library" scope="TEST" name="Maven: org.junit.platform:junit-platform-engine:1.3.2" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: org.assertj:assertj-core:3.11.1" level="project" />
     <orderEntry type="module-library">
-      <library name="Maven: ch.uzh.ifi.seal.changedistiller:changedistiller:0.0.1">
+      <library name="Maven: ch.uzh.ifi.seal:changedistiller:0.0.1-SNAPSHOT">
         <CLASSES>
           <root url="jar://$MODULE_DIR$/lib/changedistiller-0.0.1-SNAPSHOT.jar!/" />
         </CLASSES>
